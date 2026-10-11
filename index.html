@@ -151,8 +151,8 @@ const CONFIG = {
   DEPOSIT_HOURS: 24,                                 // 입금 기한(시간)
 
   // SheetDB API 주소. 비워두면 '데모 모드'로 샘플 상품이 보입니다.
-  PRODUCTS_API: 'https://sheetdb.io/api/v1/oehravh1238d4',  // 상품 시트 API (권한: Read만)   예) https://sheetdb.io/api/v1/abc123
-  ORDERS_API:   'https://sheetdb.io/api/v1/6stebbx7m1x8h',  // 주문 시트 API (권한: Create만) 예) https://sheetdb.io/api/v1/xyz789
+  PRODUCTS_API: '',  // 상품 시트 API (권한: Read만)   예) https://sheetdb.io/api/v1/abc123
+  ORDERS_API:   '',  // 주문 시트 API (권한: Create만) 예) https://sheetdb.io/api/v1/xyz789
 
   CACHE_MINUTES: 5,  // 같은 방문자가 이 시간 안에 다시 오면 시트를 다시 읽지 않음 (요청 수 절약)
   PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일) — 동의 문구에 표시
@@ -323,7 +323,11 @@ async function submitOrder(p, f, q, unit){
     else {
       const res = await fetch(CONFIG.ORDERS_API, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({data:[row]})});
       if (res.status === 429) throw new Error('지금 신청이 몰려 접수가 어려워요. 전화로 주문해 주세요: ' + CONFIG.CONTACT);
-      if (!res.ok) throw new Error('접수에 실패했어요 (' + res.status + '). 다시 시도해 주세요.');
+      if (!res.ok) {
+        let detail = ''; try { const j = await res.json(); detail = j.error || j.message || ''; } catch(_) {}
+        console.error('주문 API 오류', res.status, detail, CONFIG.ORDERS_API);
+        throw new Error('접수에 실패했어요 (' + res.status + (detail ? ': ' + detail : '') + '). 다시 시도하거나 전화로 주문해 주세요: ' + CONFIG.CONTACT);
+      }
     }
     p.joined += q; p.left = p.max ? Math.max(0, p.max - p.joined) : Infinity;
     Object.assign(p, normalize({...p.raw, joined_qty: p.joined}));
