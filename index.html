@@ -243,7 +243,8 @@ function nowKST(){
 }
 function orderNo(){
   const t = new Date(Date.now() + 9*36e5);
-  return `GB${String(t.getUTCFullYear()).slice(2)}${pad(t.getUTCMonth()+1)}${pad(t.getUTCDate())}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+  const n = 1000 + Math.floor(Math.random() * 9000);   // 1000~9999
+  return `${pad(t.getUTCMonth()+1)}${pad(t.getUTCDate())}-${n}`;
 }
 function fmtPhone(v){
   const d = v.replace(/\D/g,'');
