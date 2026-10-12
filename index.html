@@ -545,7 +545,8 @@ function updateMyOrders(){ $('#myOrders').hidden = !getOrders().length; }
 function orderBody(v){
   return `<p class="subt" style="margin:0 0 10px">${esc(v.items)}</p>
     ${v.pickup ? pickCard() : `<p class="subt">${esc(v.when)} 직접 배송해 드려요${v.ship_fee ? ` (배송비 ${won(v.ship_fee)} 포함)` : ' (무료배송)'}.</p>`}
-    <div class="bank">아래 계좌로 <b style="display:inline">${won(v.total)}</b>을 ${CONFIG.DEPOSIT_HOURS}시간 안에 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(v.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
+    <div class="bank">아래 계좌로 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(v.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
+    </p>현장결제는 픽업시 결제 해주시면 됩니다.</p>
     ${v.pickup ? `<p class="subt">${esc(v.when)} 상품이 준비되면 문자로 알려드려요.</p>` : ''}`;
 }
 function showDone(o, items){
