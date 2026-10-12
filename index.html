@@ -38,7 +38,8 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;heigh
 .notice{margin:16px 0;padding:12px 14px;border-radius:12px;background:var(--accent-soft);font-size:13px;color:var(--ink)}
 .notice:empty{display:none}
 
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding:12px 0 56px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;padding:12px 0 24px}
+#list{padding-bottom:40px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column}
 .card.closed{opacity:.62}
 .thumb{aspect-ratio:4/3;background:linear-gradient(135deg,#efe2cf,#e2cdb0);position:relative;overflow:hidden}
@@ -63,6 +64,11 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;heigh
 .btn{appearance:none;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;background:var(--accent);color:var(--accent-ink);flex:1}
 .btn:disabled{background:var(--muted);cursor:not-allowed}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);flex:0 0 auto;font-weight:500}
+.sec{margin:28px 0 0}
+.sec:first-child{margin-top:12px}
+.sec h2{font-family:'Noto Serif KR',serif;font-size:22px;letter-spacing:-.02em;margin:0 0 4px}
+.sec .lead{margin:0 0 4px;color:var(--sub);font-size:14px}
+.sec .grid{padding-bottom:8px}
 .empty{grid-column:1/-1;text-align:center;color:var(--sub);padding:48px 0}
 .skeleton{height:420px;border-radius:var(--radius);background:linear-gradient(90deg,#f1e8db 25%,#f7f1e8 50%,#f1e8db 75%);background-size:200% 100%;animation:sh 1.2s infinite}
 @keyframes sh{to{background-position:-200% 0}}
@@ -138,8 +144,8 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
   </section>
   <div class="storebar"><label for="storeSel">내 매장</label><select id="storeSel"></select><span class="info" id="storeInfo"></span></div>
   <div class="notice" id="notice"></div>
-  <div class="grid" id="grid">
-    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+  <div id="list">
+    <div class="grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
   </div>
 </main>
 
@@ -154,7 +160,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
 /* =========================================================
    설정 — 이 부분만 고치면 됩니다
    ========================================================= */
-const CONFIG = {
+	const CONFIG = {
   BRAND: '골목상회',
   CONTACT: '010-8173-1070',                         // 본사 문의 전화번호
   BANK: '새마을금고 9003-3026-2527-6 (예금주: 신용주)',  // 본사 입금 계좌 (매장 계좌가 없을 때 사용)
@@ -170,6 +176,7 @@ const CONFIG = {
   PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일)
 };
 
+
 /* ---------- 데모 데이터 (API 주소가 비어 있을 때만 사용) ---------- */
 const DEMO = (() => {
   const d = n => new Date(Date.now() + n * 864e5).toISOString().slice(0,10);
@@ -184,6 +191,8 @@ const DEMO = (() => {
       {id:'HQ-P02', store_id:'HQ', name:'생들기름 350ml', desc:'볶지 않고 짠 생들기름. 냉장 보관 필수.', image:'', price:'26000', group_price:'20500', target_qty:'20', max_qty:'40', joined_qty:'24', deadline:d(2), status:'진행'},
       {id:'S01-P01', store_id:'S01', name:'양덕점 갓 볶은 통깨 500g', desc:'양덕점 방앗간에서 직접 볶습니다.', image:'', price:'15000', group_price:'12000', target_qty:'20', max_qty:'', joined_qty:'9', deadline:d(6), status:'진행'},
       {id:'S02-P01', store_id:'S02', name:'진해점 미숫가루 1kg', desc:'진해점에서 직접 빻은 9곡 미숫가루.', image:'', price:'22000', group_price:'18000', target_qty:'15', max_qty:'30', joined_qty:'4', deadline:d(8), status:'진행'},
+      {id:'HQ-R01', store_id:'HQ', type:'일반', name:'참기름 180ml', desc:'매장에서 매일 짜는 기본 참기름.', image:'', price:'15000', group_price:'', target_qty:'', max_qty:'40', joined_qty:'12', deadline:'', status:'진행'},
+      {id:'HQ-R02', store_id:'HQ', type:'일반', name:'볶음 들깨가루 300g', desc:'국산 들깨를 볶아 곱게 빻았습니다.', image:'', price:'12000', group_price:'', target_qty:'', max_qty:'', joined_qty:'0', deadline:'', status:'진행'},
       {id:'HQ-P03', store_id:'HQ', name:'추석 참기름 선물세트', desc:'참기름+들기름 2병 세트.', image:'', price:'52000', group_price:'43000', target_qty:'15', max_qty:'15', joined_qty:'15', deadline:d(-1), status:'마감'},
     ],
   };
@@ -279,6 +288,8 @@ function normalize(r){
     name: r.name||'', desc: r.desc||'', image: safeImg(r.image),
     price: num(r.price), gp: num(r.group_price), target: num(r.target_qty), max: num(r.max_qty),
     joined: num(r.joined_qty), deadline: dl, status: String(r.status||'진행').trim(), raw: r,
+    // type: '일반'(또는 상시/매장) = 매장 상시 판매 상품, 그 외(비어 있음 포함) = 공동구매
+    regular: /^(일반|상시|매장)$/.test(String(r.type||'').trim()),
   };
   p.left = p.max ? Math.max(0, p.max - p.joined) : Infinity;
   p.closed = p.status === '마감' || (dl && dl <= Date.now()) || p.left <= 0;
@@ -308,14 +319,21 @@ function updateStoreInfo(){
 function card(p){
   const off = p.price > p.gp && p.gp ? Math.round((1 - p.gp/p.price)*100) : 0;
   const pct = p.target ? Math.min(100, Math.round(p.joined / p.target * 100)) : 0;
-  const tag = p.closed ? `<span class="tag">마감</span>`
+  const tag = p.regular
+              ? (p.closed ? `<span class="tag">${p.left <= 0 ? '품절' : '판매 종료'}</span>` : '')
+            : p.closed ? `<span class="tag">마감</span>`
             : p.reached ? `<span class="tag done">공구 확정</span>`
             : pct >= 70 ? `<span class="tag hot">마감 임박</span>` : '';
   const badge = isHQ(p) ? `<span class="badge">본점 생산 · 전 매장 픽업</span>`
                         : `<span class="badge own">${esc(storeName(p.store))} 직접 생산</span>`;
   const leftTxt = p.closed ? '' : (p.left !== Infinity ? ` · <b>${p.left}개</b> 남음` : '');
-  const btn = p.closed ? '<button class="btn" disabled>마감되었습니다</button>'
-                       : `<button class="btn" data-join="${esc(p.id)}">공동구매 참여하기</button>`;
+  const btn = p.closed ? `<button class="btn" disabled>${p.regular ? (p.left <= 0 ? '품절되었습니다' : '판매가 종료되었습니다') : '마감되었습니다'}</button>`
+                       : `<button class="btn" data-join="${esc(p.id)}">${p.regular ? '주문하기' : '공동구매 참여하기'}</button>`;
+  // 공동구매: 진행률 + 참여 수 + D-day  /  매장 상품: 재고만
+  const meta = p.regular
+    ? (p.max && !p.closed ? `<div class="stats"><span>재고 <b>${p.left}개</b></span><span></span></div>` : '')
+    : `${p.target ? `<div class="meter${p.reached?' ok':''}"><i style="width:${pct}%"></i></div>` : ''}
+      <div class="stats"><span><b>${p.joined}</b>${p.target?` / ${p.target}개 참여`:'개 참여'}${leftTxt}</span><span>${p.closed?'마감':esc(remain(p.deadline))}</span></div>`;
   return `<article class="card${p.closed?' closed':''}" id="p-${esc(p.id)}">
     <div class="thumb">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : `<div class="ph">${esc(p.name.slice(0,1))}</div>`}${tag}</div>
     <div class="body">
@@ -323,8 +341,7 @@ function card(p){
       <h3>${esc(p.name)}</h3>
       ${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ''}
       <div class="price">${off?`<span class="off">${off}%</span>`:''}<span class="now">${won(p.gp||p.price)}</span>${off?`<span class="was">${won(p.price)}</span>`:''}</div>
-      ${p.target ? `<div class="meter${p.reached?' ok':''}"><i style="width:${pct}%"></i></div>` : ''}
-      <div class="stats"><span><b>${p.joined}</b>${p.target?` / ${p.target}개 참여`:'개 참여'}${leftTxt}</span><span>${p.closed?'마감':esc(remain(p.deadline))}</span></div>
+      ${meta}
       <div class="actions">${btn}<button class="btn ghost" data-share="${esc(p.id)}" aria-label="공유">공유</button></div>
     </div>
   </article>`;
@@ -335,7 +352,14 @@ function render(){
     .filter(p => p.id && p.status !== '숨김')
     .filter(p => !MY_STORE || isHQ(p) || p.store === MY_STORE)   // 매장 선택 시: 본점 상품 + 그 매장 상품
     .sort((a,b) => (a.closed - b.closed) || ((a.deadline||Infinity) - (b.deadline||Infinity)));
-  $('#grid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">지금 진행 중인 공동구매가 없어요. 곧 새 상품으로 찾아올게요.</p>';
+  const group = list.filter(p => !p.regular), regular = list.filter(p => p.regular);
+  const section = (title, lead, items, empty) => `<section class="sec">
+      <h2>${title}</h2><p class="lead">${lead}</p>
+      <div class="grid">${items.length ? items.map(card).join('') : `<p class="empty">${empty}</p>`}</div>
+    </section>`;
+  $('#list').innerHTML =
+    section('진행 중인 공동구매', '목표 수량이 모이면 확정되는 기간 한정 특가입니다.', group, '지금 진행 중인 공동구매가 없어요. 곧 새 상품으로 찾아올게요.') +
+    (regular.length ? section(`${esc(CONFIG.BRAND)} 매장 상품`, '언제든 주문하고 택배나 매장 픽업으로 받으세요.', regular, '') : '');
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth', block:'center'});
 }
 
@@ -347,7 +371,7 @@ function openOrder(p){
   $('#dlgBody').innerHTML = `
   <form id="f" novalidate>
     <h2>${esc(p.name)}</h2>
-    <p class="subt">공동구매가 ${won(p.gp||p.price)}${p.deadline?` · ${p.deadline.getMonth()+1}월 ${p.deadline.getDate()}일 마감`:''}</p>
+    <p class="subt">${p.regular ? '판매가' : '공동구매가'} ${won(p.gp||p.price)}${p.deadline && !p.regular ?` · ${p.deadline.getMonth()+1}월 ${p.deadline.getDate()}일 마감`:''}</p>
     <div class="field"><label>수량</label>
       <div class="qty"><button type="button" data-d="-1" aria-label="빼기">−</button><input name="qty" type="number" inputmode="numeric" min="1" max="${maxQ}" value="1"><button type="button" data-d="1" aria-label="더하기">+</button></div></div>
     <div class="field"><label for="nm">이름</label><input id="nm" name="name" autocomplete="name" required></div>
@@ -419,8 +443,8 @@ function showDone(row, p){
   const bank = (!isHQ(p) && storeOf(p.store)?.bank) || CONFIG.BANK;
   const s = storeOf(row.store_id);
   const recvTxt = row.receive === '매장 픽업' && s
-    ? `<p class="subt">픽업: <b>${esc(s.name)}</b><br>${esc(s.address)}${s.hours?' · '+esc(s.hours):''}<br>마감 후 준비되면 문자로 알려드려요.</p>`
-    : `<p class="subt">마감 후 ${esc(storeName(p.store))}에서 택배로 보내드려요.</p>`;
+    ? `<p class="subt">픽업: <b>${esc(s.name)}</b><br>${esc(s.address)}${s.hours?' · '+esc(s.hours):''}<br>${p.regular ? '입금 확인 후' : '마감 후'} 준비되면 문자로 알려드려요.</p>`
+    : `<p class="subt">${p.regular ? '입금 확인 후' : '마감 후'} ${esc(storeName(p.store))}에서 택배로 보내드려요.</p>`;
   $('#dlgBody').innerHTML = `<div class="done-box">
     <h2>참여 신청이 접수됐어요</h2>
     <p class="subt">주문번호</p><span class="no">${esc(row.order_no)}</span>
@@ -438,7 +462,7 @@ async function share(p){
   if (MY_STORE) u.searchParams.set('store', MY_STORE); else u.searchParams.delete('store');
   u.hash = 'p-' + p.id;
   const url = u.toString();
-  const data = {title: `${p.name} 공동구매`, text: `${p.name} 공동구매 ${won(p.gp||p.price)} — 같이 모아요!`, url};
+  const data = {title: p.regular ? p.name : `${p.name} 공동구매`, text: p.regular ? `${p.name} ${won(p.gp||p.price)} — ${CONFIG.BRAND}` : `${p.name} 공동구매 ${won(p.gp||p.price)} — 같이 모아요!`, url};
   try { if (navigator.share) return await navigator.share(data); await navigator.clipboard.writeText(url); toast('링크를 복사했어요'); }
   catch(e){ if (e.name !== 'AbortError') toast(url); }
 }
@@ -466,7 +490,7 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
     setupStoreBar();
     render();
   } catch (e) {
-    $('#grid').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+    $('#list').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
   }
 })();
 </script>
