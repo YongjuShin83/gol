@@ -102,6 +102,15 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:20}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+.storebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;font-size:14px}
+.storebar label{font-weight:700}
+.storebar select,.field select{font:inherit;font-size:16px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);max-width:100%}
+.storebar .info{color:var(--sub);font-size:13px;flex-basis:100%}
+.storebar .info:empty{display:none}
+.badge{display:inline-block;font-size:12px;font-weight:500;padding:2px 8px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--sub);align-self:flex-start}
+.badge.own{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.pick{font-size:13px;color:var(--sub);margin-top:6px}
+.field select{width:100%}
 @media (max-width:560px){
   .steps{grid-template-columns:1fr}
   .grid{grid-template-columns:1fr}
@@ -127,6 +136,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
       <li><b>마감 후 발송</b> — 갓 짠 상품을 택배·픽업으로</li>
     </ol>
   </section>
+  <div class="storebar"><label for="storeSel">내 매장</label><select id="storeSel"></select><span class="info" id="storeInfo"></span></div>
   <div class="notice" id="notice"></div>
   <div class="grid" id="grid">
     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
@@ -146,27 +156,37 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
    ========================================================= */
 const CONFIG = {
   BRAND: '골목상회',
-  CONTACT: '010-0000-0000',                         // 문의 전화번호
-  BANK: '농협 000-0000-0000-00 (예금주: 골목상회)',  // 입금 계좌
+  CONTACT: '010-8173-1070',                         // 본사 문의 전화번호
+  BANK: '새마을금고 9003-3026-2527-6 (예금주: 신용주)',  // 본사 입금 계좌 (매장 계좌가 없을 때 사용)
   DEPOSIT_HOURS: 24,                                 // 입금 기한(시간)
+  HQ_ID: 'HQ',                                       // 본점 store_id
 
   // SheetDB API 주소. 비워두면 '데모 모드'로 샘플 상품이 보입니다.
-  PRODUCTS_API: 'https://sheetdb.io/api/v1/oehravh1238d4',  // 상품 시트 API (권한: Read만)   예) https://sheetdb.io/api/v1/abc123
-  ORDERS_API:   'https://sheetdb.io/api/v1/6stebbx7m1x8h',  // 주문 시트 API (권한: Create만) 예) https://sheetdb.io/api/v1/xyz789
+  PRODUCTS_API: 'https://sheetdb.io/api/v1/oehravh1238d4',  // 상품 시트 API (권한: Read만)   — 같은 파일의 stores 탭도 이 API로 읽습니다
+  ORDERS_API:   'https://sheetdb.io/api/v1/6stebbx7m1x8h',  // 주문 시트 API (권한: Create만)
+  STORES_SHEET: 'stores', // 매장 탭 이름
 
   CACHE_MINUTES: 5,  // 같은 방문자가 이 시간 안에 다시 오면 시트를 다시 읽지 않음 (요청 수 절약)
-  PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일) — 동의 문구에 표시
+  PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일)
 };
 
 /* ---------- 데모 데이터 (API 주소가 비어 있을 때만 사용) ---------- */
 const DEMO = (() => {
-  const d = n => { const t = new Date(Date.now() + n * 864e5); return t.toISOString().slice(0,10); };
-  return [
-    {id:'P01', name:'저온압착 참기름 350ml', desc:'국산 참깨를 낮은 온도로 볶아 짠 참기름.\n주문 마감 후 착유해 발송합니다.', image:'', price:'28000', group_price:'22000', target_qty:'30', max_qty:'60', joined_qty:'21', deadline:d(4), status:'진행'},
-    {id:'P02', name:'생들기름 350ml', desc:'볶지 않고 짠 생들기름. 냉장 보관 필수.', image:'', price:'26000', group_price:'20500', target_qty:'20', max_qty:'40', joined_qty:'24', deadline:d(2), status:'진행'},
-    {id:'P03', name:'볶음참깨 500g', desc:'방앗간에서 직접 볶은 통깨.', image:'', price:'15000', group_price:'12000', target_qty:'40', max_qty:'', joined_qty:'9', deadline:d(9), status:'진행'},
-    {id:'P04', name:'추석 참기름 선물세트', desc:'참기름+들기름 2병 세트.', image:'', price:'52000', group_price:'43000', target_qty:'15', max_qty:'15', joined_qty:'15', deadline:d(-1), status:'마감'},
-  ];
+  const d = n => new Date(Date.now() + n * 864e5).toISOString().slice(0,10);
+  return {
+    stores: [
+      {store_id:'HQ',  name:'골목상회 본점', address:'경남 창원시 마산회원구 ○○로 12', phone:'055-000-0000', hours:'09:00~19:00 (일 휴무)', bank:'', status:'운영'},
+      {store_id:'S01', name:'골목상회 양덕점', address:'경남 창원시 마산회원구 양덕동 ○○', phone:'055-111-1111', hours:'10:00~19:00', bank:'', status:'운영'},
+      {store_id:'S02', name:'골목상회 진해점', address:'경남 창원시 진해구 ○○', phone:'055-222-2222', hours:'09:30~18:30', bank:'경남은행 000-00-000000 (예금주: 진해점)', status:'운영'},
+    ],
+    products: [
+      {id:'HQ-P01', store_id:'HQ', name:'저온압착 참기름 350ml', desc:'본점에서 착유해 전 매장으로 보내드립니다.\n가까운 매장에서 픽업하세요.', image:'', price:'28000', group_price:'22000', target_qty:'30', max_qty:'60', joined_qty:'21', deadline:d(4), status:'진행'},
+      {id:'HQ-P02', store_id:'HQ', name:'생들기름 350ml', desc:'볶지 않고 짠 생들기름. 냉장 보관 필수.', image:'', price:'26000', group_price:'20500', target_qty:'20', max_qty:'40', joined_qty:'24', deadline:d(2), status:'진행'},
+      {id:'S01-P01', store_id:'S01', name:'양덕점 갓 볶은 통깨 500g', desc:'양덕점 방앗간에서 직접 볶습니다.', image:'', price:'15000', group_price:'12000', target_qty:'20', max_qty:'', joined_qty:'9', deadline:d(6), status:'진행'},
+      {id:'S02-P01', store_id:'S02', name:'진해점 미숫가루 1kg', desc:'진해점에서 직접 빻은 9곡 미숫가루.', image:'', price:'22000', group_price:'18000', target_qty:'15', max_qty:'30', joined_qty:'4', deadline:d(8), status:'진행'},
+      {id:'HQ-P03', store_id:'HQ', name:'추석 참기름 선물세트', desc:'참기름+들기름 2병 세트.', image:'', price:'52000', group_price:'43000', target_qty:'15', max_qty:'15', joined_qty:'15', deadline:d(-1), status:'마감'},
+    ],
+  };
 })();
 const DEMO_MODE = !CONFIG.PRODUCTS_API;
 
@@ -175,8 +195,9 @@ const $ = s => document.querySelector(s);
 const num = v => { const n = parseInt(String(v ?? '').replace(/[^\d-]/g,''), 10); return isNaN(n) ? 0 : n; };
 const won = n => n.toLocaleString('ko-KR') + '원';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const safeImg = u => { u = String(u||'').trim(); return /^(https?:\/\/|\.?\/?[\w\-./]+\.(jpe?g|png|webp|gif)$)/i.test(u) && !/^javascript:/i.test(u) ? u : ''; };
+const safeImg = u => { u = String(u||'').trim(); return /^(https?:\/\/|\.?\/?[\w\-./]+\.(jpe?g|png|webp|gif)$)/i.test(u) ? u : ''; };
 const pad = n => String(n).padStart(2,'0');
+const sid = v => String(v||'').trim().toUpperCase();
 function parseDeadline(s){
   s = String(s||'').trim().replace(/\./g,'-').replace(/\s+/,'T');
   if (!s) return null;
@@ -187,8 +208,7 @@ function remain(dl){
   if (!dl) return '';
   const ms = dl - Date.now(); if (ms <= 0) return '마감';
   const h = ms / 36e5;
-  if (h < 24) return `${Math.ceil(h)}시간 남음`;
-  return `D-${Math.ceil(h/24)}`;
+  return h < 24 ? `${Math.ceil(h)}시간 남음` : `D-${Math.ceil(h/24)}`;
 }
 function nowKST(){
   const t = new Date(Date.now() + 9*36e5);
@@ -196,8 +216,7 @@ function nowKST(){
 }
 function orderNo(){
   const t = new Date(Date.now() + 9*36e5);
-  const r = Math.random().toString(36).slice(2,6).toUpperCase();
-  return `GB${String(t.getUTCFullYear()).slice(2)}${pad(t.getUTCMonth()+1)}${pad(t.getUTCDate())}-${r}`;
+  return `GB${String(t.getUTCFullYear()).slice(2)}${pad(t.getUTCMonth()+1)}${pad(t.getUTCDate())}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
 }
 function fmtPhone(v){
   const d = v.replace(/\D/g,'');
@@ -206,37 +225,83 @@ function fmtPhone(v){
   return v.trim();
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
-const store = {
-  get(k){ try{ return JSON.parse(sessionStorage.getItem(k)); }catch(e){ return null; } },
-  set(k,v){ try{ sessionStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+const store = {  // 브라우저 저장소 (실패해도 동작)
+  get(k, ss=true){ try{ return JSON.parse((ss?sessionStorage:localStorage).getItem(k)); }catch(e){ return null; } },
+  set(k, v, ss=true){ try{ (ss?sessionStorage:localStorage).setItem(k, JSON.stringify(v)); }catch(e){} },
 };
 
-/* ---------- 데이터 ---------- */
-let PRODUCTS = [];
-
-async function loadProducts(){
+/* ---------- 데이터 (나중에 Apps Script/Supabase로 바꿀 때 이 두 함수만 교체) ---------- */
+async function apiGet(url){
+  const res = await fetch(url);
+  if (res.status === 429) throw new Error('이번 달 조회 한도를 넘었어요. 전화로 문의해 주세요: ' + CONFIG.CONTACT);
+  if (!res.ok) throw new Error('불러오지 못했어요 (' + res.status + ')');
+  return res.json();
+}
+async function loadData(){
   if (DEMO_MODE) return DEMO;
-  const c = store.get('gb_products');
-  if (c && Date.now() - c.at < CONFIG.CACHE_MINUTES * 6e4) return c.rows;
-  const res = await fetch(CONFIG.PRODUCTS_API);
-  if (res.status === 429) throw new Error('이번 달 조회 한도를 넘었어요. 잠시 후 다시 시도하거나 전화로 문의해 주세요.');
-  if (!res.ok) throw new Error('상품을 불러오지 못했어요 (' + res.status + ')');
-  const rows = await res.json();
-  store.set('gb_products', {at: Date.now(), rows});
-  return rows;
+  const c = store.get('gb_data');
+  if (c && Date.now() - c.at < CONFIG.CACHE_MINUTES * 6e4) return c.data;
+  const [products, stores] = await Promise.all([
+    apiGet(CONFIG.PRODUCTS_API),
+    apiGet(CONFIG.PRODUCTS_API + '?sheet=' + encodeURIComponent(CONFIG.STORES_SHEET)).catch(() => []),
+  ]);
+  const data = {products, stores};
+  store.set('gb_data', {at: Date.now(), data});
+  return data;
+}
+async function postOrder(row){
+  if (DEMO_MODE || !CONFIG.ORDERS_API) return new Promise(r => setTimeout(r, 600));
+  const res = await fetch(CONFIG.ORDERS_API, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({data:[row]})});
+  if (res.status === 429) throw new Error('지금 신청이 몰려 접수가 어려워요. 전화로 주문해 주세요: ' + CONFIG.CONTACT);
+  if (!res.ok) {
+    let detail = ''; try { const j = await res.json(); detail = j.error || j.message || ''; } catch(_) {}
+    console.error('주문 API 오류', res.status, detail);
+    throw new Error('접수에 실패했어요 (' + res.status + (detail ? ': ' + detail : '') + '). 전화로 주문해 주세요: ' + CONFIG.CONTACT);
+  }
 }
 
+/* ---------- 상태 ---------- */
+let PRODUCTS = [], STORES = [], MY_STORE = '';
+const storeOf = id => STORES.find(s => s.id === id);
+const storeName = id => storeOf(id)?.name || id;
+const isHQ = p => p.store === CONFIG.HQ_ID;
+// 이 상품을 받을 수 있는 픽업 매장: 본점 상품 = 전 매장, 매장 상품 = 그 매장만
+const pickupStores = p => isHQ(p) ? STORES : STORES.filter(s => s.id === p.store);
+
+function normStore(r){
+  return { id: sid(r.store_id), name: String(r.name||'').trim(), address: r.address||'', phone: r.phone||'',
+           hours: r.hours||'', bank: String(r.bank||'').trim(), status: String(r.status||'운영').trim() };
+}
 function normalize(r){
   const dl = parseDeadline(r.deadline);
   const p = {
-    id: String(r.id||'').trim(), name: r.name||'', desc: r.desc||'', image: safeImg(r.image),
+    id: String(r.id||'').trim(), store: sid(r.store_id) || CONFIG.HQ_ID,
+    name: r.name||'', desc: r.desc||'', image: safeImg(r.image),
     price: num(r.price), gp: num(r.group_price), target: num(r.target_qty), max: num(r.max_qty),
-    joined: num(r.joined_qty), deadline: dl, status: String(r.status||'진행').trim(),
+    joined: num(r.joined_qty), deadline: dl, status: String(r.status||'진행').trim(), raw: r,
   };
   p.left = p.max ? Math.max(0, p.max - p.joined) : Infinity;
   p.closed = p.status === '마감' || (dl && dl <= Date.now()) || p.left <= 0;
   p.reached = p.target > 0 && p.joined >= p.target;
   return p;
+}
+
+/* ---------- 매장 선택 ---------- */
+function setupStoreBar(){
+  const sel = $('#storeSel');
+  sel.innerHTML = '<option value="">전체 매장 보기</option>' + STORES.map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  // 우선순위: 링크의 ?store=S01  >  지난번 선택
+  const fromUrl = sid(new URLSearchParams(location.search).get('store'));
+  const saved = store.get('gb_store', false);
+  MY_STORE = [fromUrl, saved].find(v => v && storeOf(v)) || '';
+  if (fromUrl && storeOf(fromUrl)) store.set('gb_ref', fromUrl, false);  // 유입 매장 기록
+  sel.value = MY_STORE;
+  sel.onchange = () => { MY_STORE = sel.value; store.set('gb_store', MY_STORE, false); updateStoreInfo(); render(); };
+  updateStoreInfo();
+}
+function updateStoreInfo(){
+  const s = storeOf(MY_STORE);
+  $('#storeInfo').innerHTML = s ? `${esc(s.address)}${s.hours?' · '+esc(s.hours):''}${s.phone?` · <a href="tel:${esc(s.phone.replace(/\D/g,''))}">${esc(s.phone)}</a>`:''}` : '';
 }
 
 /* ---------- 화면 ---------- */
@@ -246,12 +311,15 @@ function card(p){
   const tag = p.closed ? `<span class="tag">마감</span>`
             : p.reached ? `<span class="tag done">공구 확정</span>`
             : pct >= 70 ? `<span class="tag hot">마감 임박</span>` : '';
+  const badge = isHQ(p) ? `<span class="badge">본점 생산 · 전 매장 픽업</span>`
+                        : `<span class="badge own">${esc(storeName(p.store))} 직접 생산</span>`;
   const leftTxt = p.closed ? '' : (p.left !== Infinity ? ` · <b>${p.left}개</b> 남음` : '');
   const btn = p.closed ? '<button class="btn" disabled>마감되었습니다</button>'
                        : `<button class="btn" data-join="${esc(p.id)}">공동구매 참여하기</button>`;
   return `<article class="card${p.closed?' closed':''}" id="p-${esc(p.id)}">
     <div class="thumb">${p.image ? `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy">` : `<div class="ph">${esc(p.name.slice(0,1))}</div>`}${tag}</div>
     <div class="body">
+      ${badge}
       <h3>${esc(p.name)}</h3>
       ${p.desc ? `<p class="desc">${esc(p.desc)}</p>` : ''}
       <div class="price">${off?`<span class="off">${off}%</span>`:''}<span class="now">${won(p.gp||p.price)}</span>${off?`<span class="was">${won(p.price)}</span>`:''}</div>
@@ -263,7 +331,9 @@ function card(p){
 }
 
 function render(){
-  const list = PRODUCTS.filter(p => p.id && p.status !== '숨김')
+  const list = PRODUCTS
+    .filter(p => p.id && p.status !== '숨김')
+    .filter(p => !MY_STORE || isHQ(p) || p.store === MY_STORE)   // 매장 선택 시: 본점 상품 + 그 매장 상품
     .sort((a,b) => (a.closed - b.closed) || ((a.deadline||Infinity) - (b.deadline||Infinity)));
   $('#grid').innerHTML = list.length ? list.map(card).join('') : '<p class="empty">지금 진행 중인 공동구매가 없어요. 곧 새 상품으로 찾아올게요.</p>';
   if (location.hash) document.querySelector(location.hash)?.scrollIntoView({behavior:'smooth', block:'center'});
@@ -272,21 +342,27 @@ function render(){
 /* ---------- 주문 ---------- */
 function openOrder(p){
   const maxQ = p.left === Infinity ? 99 : p.left;
+  const stores = pickupStores(p);
+  const defPick = stores.some(s => s.id === MY_STORE) ? MY_STORE : (stores[0]?.id || '');
   $('#dlgBody').innerHTML = `
   <form id="f" novalidate>
     <h2>${esc(p.name)}</h2>
-    <p class="subt">공동구매가 ${won(p.gp||p.price)} · ${p.deadline?`${p.deadline.getMonth()+1}월 ${p.deadline.getDate()}일 마감`:''}</p>
+    <p class="subt">공동구매가 ${won(p.gp||p.price)}${p.deadline?` · ${p.deadline.getMonth()+1}월 ${p.deadline.getDate()}일 마감`:''}</p>
     <div class="field"><label>수량</label>
       <div class="qty"><button type="button" data-d="-1" aria-label="빼기">−</button><input name="qty" type="number" inputmode="numeric" min="1" max="${maxQ}" value="1"><button type="button" data-d="1" aria-label="더하기">+</button></div></div>
     <div class="field"><label for="nm">이름</label><input id="nm" name="name" autocomplete="name" required></div>
     <div class="field"><label for="ph">휴대폰 번호</label><input id="ph" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required></div>
     <div class="field"><label>받는 방법</label>
-      <div class="seg"><label><input type="radio" name="receive" value="택배" checked><span>택배</span></label><label><input type="radio" name="receive" value="매장 픽업"><span>매장 픽업</span></label></div></div>
-    <div class="field" id="addrF"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address"></div>
+      <div class="seg"><label><input type="radio" name="receive" value="매장 픽업" ${stores.length?'checked':'disabled'}><span>매장 픽업</span></label><label><input type="radio" name="receive" value="택배" ${stores.length?'':'checked'}><span>택배</span></label></div></div>
+    <div class="field" id="pickF"><label for="ps">픽업 매장</label>
+      <select id="ps" name="pickup">${stores.map(s => `<option value="${esc(s.id)}" ${s.id===defPick?'selected':''}>${esc(s.name)}</option>`).join('')}</select>
+      <p class="pick" id="pickInfo"></p></div>
+    <div class="field" id="addrF" style="display:none"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address">
+      <p class="pick">택배는 ${esc(storeName(p.store))}에서 발송합니다.</p></div>
     <div class="field"><label for="mm">요청사항 (선택)</label><textarea id="mm" name="memo" rows="2"></textarea></div>
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <label class="consent"><input type="checkbox" name="agree"><span>개인정보 수집·이용에 동의합니다 (필수)
-      <details><summary>자세히</summary>수집 항목: 이름, 휴대폰 번호, 주소 / 목적: 공동구매 주문 확인·배송·연락 / 보유 기간: 주문 완료 후 ${CONFIG.PRIVACY_DAYS}일. 동의하지 않으면 참여가 어렵습니다.</details></span></label>
+      <details><summary>자세히</summary>수집 항목: 이름, 휴대폰 번호, 주소 / 목적: 공동구매 주문 확인·배송·픽업 안내 / 제공: 주문을 처리하는 ${esc(CONFIG.BRAND)} 매장 / 보유 기간: 주문 완료 후 ${CONFIG.PRIVACY_DAYS}일. 동의하지 않으면 참여가 어렵습니다.</details></span></label>
     <div class="total"><span>결제 예정 금액</span><b id="tot">${won(p.gp||p.price)}</b></div>
     <p class="err" id="err" role="alert"></p>
     <div class="row"><button type="button" class="btn ghost" id="cancel">닫기</button><button class="btn" id="submit">참여 신청</button></div>
@@ -294,9 +370,13 @@ function openOrder(p){
   const f = $('#f'), unit = p.gp || p.price;
   const qty = () => Math.max(1, Math.min(maxQ, num(f.qty.value)||1));
   const upd = () => { $('#tot').textContent = won(unit * qty()); };
+  const showPick = () => { const s = storeOf(f.pickup?.value); $('#pickInfo').textContent = s ? [s.address, s.hours].filter(Boolean).join(' · ') : ''; };
+  const toggle = () => { const pick = f.receive.value === '매장 픽업'; $('#pickF').style.display = pick ? '' : 'none'; $('#addrF').style.display = pick ? 'none' : ''; };
   f.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { f.qty.value = Math.max(1, Math.min(maxQ, qty() + +b.dataset.d)); upd(); });
   f.qty.oninput = upd;
-  f.querySelectorAll('[name=receive]').forEach(r => r.onchange = () => { $('#addrF').style.display = f.receive.value === '택배' ? '' : 'none'; });
+  f.querySelectorAll('[name=receive]').forEach(r => r.onchange = toggle);
+  if (f.pickup) f.pickup.onchange = showPick;
+  toggle(); showPick();
   $('#cancel').onclick = () => $('#dlg').close();
   f.onsubmit = e => { e.preventDefault(); submitOrder(p, f, qty(), unit); };
   $('#dlg').showModal();
@@ -306,8 +386,10 @@ async function submitOrder(p, f, q, unit){
   const err = $('#err'); err.textContent = '';
   if (f.website.value) return;  // 스팸봇 차단
   const name = f.name.value.trim(), phone = fmtPhone(f.phone.value), recv = f.receive.value, addr = f.address.value.trim();
+  const pickup = recv === '매장 픽업' ? sid(f.pickup?.value) : '';
   if (!name) return err.textContent = '이름을 입력해 주세요.';
   if (!/^01\d-\d{3,4}-\d{4}$/.test(phone)) return err.textContent = '휴대폰 번호를 확인해 주세요.';
+  if (recv === '매장 픽업' && !pickup) return err.textContent = '픽업 매장을 선택해 주세요.';
   if (recv === '택배' && addr.length < 6) return err.textContent = '배송 주소를 입력해 주세요.';
   if (!f.agree.checked) return err.textContent = '개인정보 수집·이용에 동의해 주세요.';
   if (q > p.left) return err.textContent = `남은 수량은 ${p.left}개입니다.`;
@@ -316,42 +398,46 @@ async function submitOrder(p, f, q, unit){
     order_no: orderNo(), created_at: nowKST(), product_id: p.id, product_name: p.name,
     unit_price: unit, qty: q, total: unit * q, name, phone, receive: recv,
     address: recv === '택배' ? addr : '', memo: f.memo.value.trim(), status: '입금대기',
+    store_id: pickup || p.store,                 // 처리 매장: 픽업 매장, 택배면 생산 매장
+    product_store_id: p.store,                   // 생산 매장 (HQ = 본점)
+    ref_store_id: store.get('gb_ref', false) || MY_STORE || '',  // 유입 매장 (매장 링크로 들어온 경우)
   };
   const btn = $('#submit'); btn.disabled = true; btn.textContent = '보내는 중…';
   try {
-    if (DEMO_MODE || !CONFIG.ORDERS_API) { await new Promise(r => setTimeout(r, 600)); }
-    else {
-      const res = await fetch(CONFIG.ORDERS_API, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body: JSON.stringify({data:[row]})});
-      if (res.status === 429) throw new Error('지금 신청이 몰려 접수가 어려워요. 전화로 주문해 주세요: ' + CONFIG.CONTACT);
-      if (!res.ok) {
-        let detail = ''; try { const j = await res.json(); detail = j.error || j.message || ''; } catch(_) {}
-        console.error('주문 API 오류', res.status, detail, CONFIG.ORDERS_API);
-        throw new Error('접수에 실패했어요 (' + res.status + (detail ? ': ' + detail : '') + '). 다시 시도하거나 전화로 주문해 주세요: ' + CONFIG.CONTACT);
-      }
-    }
-    p.joined += q; p.left = p.max ? Math.max(0, p.max - p.joined) : Infinity;
-    Object.assign(p, normalize({...p.raw, joined_qty: p.joined}));
-    const c = store.get('gb_products'); if (c) { const r = c.rows.find(x => String(x.id).trim() === p.id); if (r) { r.joined_qty = p.joined; store.set('gb_products', c); } }
+    await postOrder(row);
+    Object.assign(p, normalize({...p.raw, joined_qty: p.joined + q}));
+    const c = store.get('gb_data'); if (c) { const r = c.data.products.find(x => String(x.id).trim() === p.id); if (r) { r.joined_qty = p.joined; store.set('gb_data', c); } }
     render();
-    showDone(row);
+    showDone(row, p);
   } catch (e) {
     err.textContent = e.message; btn.disabled = false; btn.textContent = '참여 신청';
   }
 }
 
-function showDone(row){
+function showDone(row, p){
+  // 입금 계좌: 매장 상품이고 그 매장에 계좌가 있으면 매장 계좌, 아니면 본사 계좌
+  const bank = (!isHQ(p) && storeOf(p.store)?.bank) || CONFIG.BANK;
+  const s = storeOf(row.store_id);
+  const recvTxt = row.receive === '매장 픽업' && s
+    ? `<p class="subt">픽업: <b>${esc(s.name)}</b><br>${esc(s.address)}${s.hours?' · '+esc(s.hours):''}<br>마감 후 준비되면 문자로 알려드려요.</p>`
+    : `<p class="subt">마감 후 ${esc(storeName(p.store))}에서 택배로 보내드려요.</p>`;
   $('#dlgBody').innerHTML = `<div class="done-box">
     <h2>참여 신청이 접수됐어요</h2>
     <p class="subt">주문번호</p><span class="no">${esc(row.order_no)}</span>
-    <div class="bank">아래 계좌로 <b style="display:inline">${won(row.total)}</b>을 ${CONFIG.DEPOSIT_HOURS}시간 안에 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(row.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
+    <div class="bank">아래 계좌로 <b style="display:inline">${won(row.total)}</b>을 ${CONFIG.DEPOSIT_HOURS}시간 안에 입금해 주세요.<b>${esc(bank)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(row.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
+    ${recvTxt}
     ${DEMO_MODE ? '<p class="subt">※ 데모 모드라 실제 주문은 저장되지 않았습니다.</p>' : ''}
     <div class="row"><button class="btn ghost" id="copyBank">계좌 복사</button><button class="btn" id="ok">확인</button></div></div>`;
   $('#ok').onclick = () => $('#dlg').close();
-  $('#copyBank').onclick = async () => { try { await navigator.clipboard.writeText(CONFIG.BANK); toast('계좌번호를 복사했어요'); } catch(e) { toast(CONFIG.BANK); } };
+  $('#copyBank').onclick = async () => { try { await navigator.clipboard.writeText(bank); toast('계좌번호를 복사했어요'); } catch(e) { toast(bank); } };
 }
 
 async function share(p){
-  const url = location.href.split('#')[0] + '#p-' + p.id;
+  // 매장을 선택한 상태로 공유하면 링크에 매장이 붙어, 받은 사람도 그 매장이 기본 선택됨
+  const u = new URL(location.href.split('#')[0]);
+  if (MY_STORE) u.searchParams.set('store', MY_STORE); else u.searchParams.delete('store');
+  u.hash = 'p-' + p.id;
+  const url = u.toString();
   const data = {title: `${p.name} 공동구매`, text: `${p.name} 공동구매 ${won(p.gp||p.price)} — 같이 모아요!`, url};
   try { if (navigator.share) return await navigator.share(data); await navigator.clipboard.writeText(url); toast('링크를 복사했어요'); }
   catch(e){ if (e.name !== 'AbortError') toast(url); }
@@ -370,11 +456,14 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
   document.title = `${CONFIG.BRAND} 공동구매`;
   $('#brand').innerHTML = `${esc(CONFIG.BRAND)}<small>공동구매</small>`;
   $('#contact').textContent = `문의 ${CONFIG.CONTACT}`; $('#contact').href = 'tel:' + CONFIG.CONTACT.replace(/\D/g,'');
-  $('#footer').innerHTML = `${esc(CONFIG.BRAND)} · 문의 ${esc(CONFIG.CONTACT)}<br>공동구매는 목표 수량 미달 시 취소될 수 있으며, 이 경우 입금액은 전액 환불됩니다.`;
-  if (DEMO_MODE) $('#notice').textContent = '데모 모드입니다. index.html 상단 CONFIG에 SheetDB 주소를 넣으면 실제 시트와 연결됩니다.';
+  $('#footer').innerHTML = `${esc(CONFIG.BRAND)} · 본사 문의 ${esc(CONFIG.CONTACT)}<br>공동구매는 목표 수량 미달 시 취소될 수 있으며, 이 경우 입금액은 전액 환불됩니다.`;
+  if (DEMO_MODE) $('#notice').textContent = '데모 모드입니다. CONFIG에 SheetDB 주소를 넣으면 실제 시트와 연결됩니다.';
   try {
-    const rows = await loadProducts();
-    PRODUCTS = rows.map(r => Object.assign(normalize(r), {raw: r}));
+    const data = await loadData();
+    STORES = (data.stores || []).map(normStore).filter(s => s.id && s.status !== '숨김');
+    if (!storeOf(CONFIG.HQ_ID)) STORES.unshift({id: CONFIG.HQ_ID, name: CONFIG.BRAND + ' 본점', address:'', phone: CONFIG.CONTACT, hours:'', bank:'', status:'운영'});
+    PRODUCTS = (data.products || []).map(normalize);
+    setupStoreBar();
     render();
   } catch (e) {
     $('#grid').innerHTML = `<p class="empty">${esc(e.message)}</p>`;
