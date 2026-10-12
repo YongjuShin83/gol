@@ -108,6 +108,8 @@ dialog::backdrop{background:rgba(30,20,10,.45)}
 .done-box .no{font-family:ui-monospace,monospace;background:var(--bg);padding:6px 10px;border-radius:8px;display:inline-block;margin:6px 0 14px}
 .bank{background:var(--accent-soft);border-radius:12px;padding:14px;text-align:left;font-size:14px;margin-bottom:16px}
 .bank b{display:block;font-size:16px;margin-top:2px}
+.bank.card{background:var(--ok-soft)}
+.bank .btn{display:block;width:100%;margin-top:10px;padding:11px 14px;font-size:14px}
 
 .cart-list{border-top:1px solid var(--line);margin:4px 0 18px}
 .ci{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
@@ -153,7 +155,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
     <p>목표 수량이 모이면 공동구매가 확정되고, 마감 후 한 번에 짜서 보내드립니다.</p>
     <ol class="steps">
       <li><b>참여 신청</b> — 수량과 연락처만 남기면 끝</li>
-      <li><b>입금</b> — 안내된 계좌로 입금하면 확정</li>
+      <li id="stepPay"><b>입금</b> — 안내된 계좌로 입금하면 확정</li>
       <li><b>계좌번호</b> <span id="stepBank"></span></li>
       <li id="stepRecv"><b>마감 후 수령</b> — 매장 픽업 또는 배송으로</li>
     </ol>
@@ -181,6 +183,10 @@ const CONFIG = {
   CONTACT: '010-8173-1070',                              // 문의 전화번호
   BANK: '새마을금고 9003-3026-2527-6 (예금주: 신용주)',    // 입금 계좌
   DEPOSIT_HOURS: 24,                                      // 입금 기한(시간)
+
+  // 카드결제 (페이앱). 두 칸을 모두 채우면 장바구니에 '카드결제'가 나타납니다.
+  PAYAPP_USERID: '',        // 페이앱 판매자 아이디
+  PAYAPP_FEEDBACK_URL: '',  // 결제 결과를 받을 Apps Script 웹 앱 주소 (https://script.google.com/macros/s/.../exec)
 
   // 픽업 매장 정보
   STORE_NAME: '골목상회',
@@ -215,6 +221,8 @@ const DEMO = (() => {
 const DEMO_MODE = !CONFIG.PRODUCTS_API;
 const PICKUP = '매장 픽업';
 const SHIP = CONFIG.DELIVERY_LABEL || '일반배송';
+const BANKPAY = '계좌이체', CARDPAY = '카드결제';
+const CARD_ON = !!(CONFIG.PAYAPP_USERID && CONFIG.PAYAPP_FEEDBACK_URL);
 const STORE = {name: CONFIG.STORE_NAME || CONFIG.BRAND, address: CONFIG.ADDRESS, hours: CONFIG.HOURS, phone: CONFIG.CONTACT};
 // 배송비: 상품 금액이 무료배송 기준 이상이면 0원
 const shipFee = items => (CONFIG.FREE_SHIP_OVER && items >= CONFIG.FREE_SHIP_OVER) ? 0 : (CONFIG.DELIVERY_FEE || 0);
@@ -312,6 +320,25 @@ async function postOrder(rows){
     console.error('주문 API 오류', res.status, detail);
     throw new Error('접수에 실패했어요 (' + res.status + (detail ? ': ' + detail : '') + '). 전화로 주문해 주세요: ' + CONFIG.CONTACT);
   }
+}
+
+/* ---------- 카드결제 (페이앱) ---------- */
+// 페이앱 결제창으로 이동. 결제 결과는 페이앱 → Apps Script(feedbackurl)로 전달되어 주문 시트에 기록됨.
+// 돌아오는 화면(returnurl)은 안내용일 뿐, 결제 확인은 시트의 '결제완료'로 판단합니다.
+function payCard(o){
+  const back = location.origin + location.pathname + '?paid=' + encodeURIComponent(o.order_no);
+  const fields = {
+    userid: CONFIG.PAYAPP_USERID, shopname: CONFIG.BRAND,
+    goodname: o.goodname, price: o.total, recvphone: String(o.phone).replace(/\D/g, ''),
+    memo: '주문번호 ' + o.order_no, var1: o.order_no,
+    feedbackurl: CONFIG.PAYAPP_FEEDBACK_URL, checkretry: 'y',
+    returnurl: back, smsuse: 'n',
+  };
+  const form = document.createElement('form');
+  form.method = 'post'; form.action = 'https://lite.payapp.kr/pay'; form.acceptCharset = 'utf-8'; form.style.display = 'none';
+  for (const [k, v] of Object.entries(fields)) { const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; form.appendChild(i); }
+  document.body.appendChild(form);
+  form.submit();
 }
 
 /* ---------- 상품 ---------- */
@@ -442,6 +469,9 @@ function openCart(){
     <div id="pickF">${pickCard()}</div>
     <div class="field" id="addrF" style="display:none"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address">
       <p class="pick">매장에서 직접 배송합니다. 배송비 ${won(CONFIG.DELIVERY_FEE||0)}${CONFIG.FREE_SHIP_OVER ? ` (${won(CONFIG.FREE_SHIP_OVER)} 이상 무료)` : ''}${CONFIG.DELIVERY_NOTE ? '<br>' + esc(CONFIG.DELIVERY_NOTE) : ''}</p></div>
+    ${CARD_ON ? `<div class="field"><label>결제 방법</label>
+      <div class="seg"><label><input type="radio" name="pay" value="${CARDPAY}" checked><span>${CARDPAY}</span></label><label><input type="radio" name="pay" value="${BANKPAY}"><span>${BANKPAY}</span></label></div>
+      <p class="pick" id="payHint"></p></div>` : ''}
     <div class="field"><label for="mm">요청사항 (선택)</label><textarea id="mm" name="memo" rows="2"></textarea></div>
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <label class="consent"><input type="checkbox" name="agree"><span>개인정보 수집·이용에 동의합니다 (필수)
@@ -456,7 +486,10 @@ function openCart(){
   </form>`;
   const f = $('#f');
   const recvVal = () => f.querySelector('[name=receive]:checked')?.value || '';
+  const payVal = () => f.querySelector('[name=pay]:checked')?.value || BANKPAY;
   const upd = () => {
+    if ($('#payHint')) $('#payHint').textContent = payVal() === CARDPAY ? '주문 접수 후 카드 결제 화면으로 넘어갑니다.' : '주문 접수 후 안내되는 계좌로 입금해 주세요.';
+    $('#submit').textContent = payVal() === CARDPAY ? '주문하고 카드 결제' : '주문하기';
     $('#cartList').innerHTML = cartItems().map(({p, qty}) => `
       <div class="ci">
         <div class="ci-name">${esc(p.name)}<small>${won(unitOf(p))}${p.regular ? '' : ' · 공동구매'}</small></div>
@@ -489,6 +522,7 @@ function openCart(){
   };
   const toggle = () => { $('#pickF').style.display = recvVal() === PICKUP ? '' : 'none'; $('#addrF').style.display = recvVal() === SHIP ? '' : 'none'; upd(); };
   f.querySelectorAll('[name=receive]').forEach(r => r.onchange = toggle);
+  f.querySelectorAll('[name=pay]').forEach(r => r.onchange = upd);
   toggle();
   $('#cancel').onclick = () => $('#dlg').close();
   f.onsubmit = e => { e.preventDefault(); submitCart(f, canShip); };
@@ -501,6 +535,7 @@ async function submitCart(f, canShip){
   const items = cartItems();
   const name = f.name.value.trim(), phone = fmtPhone(f.phone.value), addr = f.address.value.trim();
   const recv = f.querySelector('[name=receive]:checked')?.value || PICKUP;
+  const pay = CARD_ON ? (f.querySelector('[name=pay]:checked')?.value || BANKPAY) : BANKPAY;
   if (!items.length) return err.textContent = '장바구니가 비어 있어요.';
   if (!name) return err.textContent = '이름을 입력해 주세요.';
   if (!/^01\d-\d{3,4}-\d{4}$/.test(phone)) return err.textContent = '휴대폰 번호를 확인해 주세요.';
@@ -518,7 +553,8 @@ async function submitCart(f, canShip){
     unit_price: unitOf(p), qty, total: unitOf(p) * qty,
     ship_fee: i === 0 ? fee : '', order_total: i === 0 ? sum + fee : '',
     name, phone, receive: recv, address: recv === SHIP ? addr : '',
-    memo: i === 0 ? f.memo.value.trim() : '', status: '입금대기',
+    memo: i === 0 ? f.memo.value.trim() : '', pay_method: pay,
+    status: pay === CARDPAY ? '결제대기' : '입금대기',
   }));
   const btn = $('#submit'); btn.disabled = true; btn.textContent = '보내는 중…';
   try {
@@ -531,9 +567,11 @@ async function submitCart(f, canShip){
     });
     if (c) ss.set('gb_products', c);
     CART = []; saveCart(); updateCartBar(); render();
-    showDone({order_no: no, name, receive: recv, total: sum + fee, ship_fee: fee}, items);
+    const goodname = items[0].p.name + (items.length > 1 ? ` 외 ${items.length - 1}건` : '');
+    const v = showDone({order_no: no, name, phone, receive: recv, total: sum + fee, ship_fee: fee, pay, goodname}, items);
+    if (pay === CARDPAY && !DEMO_MODE) { btn.textContent = '결제 화면으로 이동 중…'; payCard(v); }
   } catch (e) {
-    err.textContent = e.message; btn.disabled = false; btn.textContent = '주문하기';
+    err.textContent = e.message; btn.disabled = false; btn.textContent = pay === CARDPAY ? '주문하고 카드 결제' : '주문하기';
   }
 }
 
@@ -543,19 +581,28 @@ const getOrders = () => ls.get('gb_orders', []);
 function saveOrder(v){ ls.set('gb_orders', [v, ...getOrders()].slice(0, 5)); updateMyOrders(); }
 function updateMyOrders(){ $('#myOrders').hidden = !getOrders().length; }
 function orderBody(v){
+  const card = v.pay === CARDPAY;
+  const payBox = card
+    ? `<div class="bank card">카드결제 ${won(v.total || 0)}<b>${v.card_back ? '결제 화면을 마쳤어요' : '카드 결제가 필요해요'}</b>
+        <span style="color:var(--sub);font-size:13px">${v.card_back ? '결제가 확인되면 준비를 시작해요. 결제를 끝내지 못했다면 아래 버튼으로 다시 결제해 주세요.' : '결제를 마쳐야 주문이 확정돼요.'}</span>
+        ${CARD_ON ? `<button type="button" class="btn" data-paycard="${esc(v.order_no)}">카드로 결제하기</button>` : ''}</div>`
+    : `<div class="bank">아래 계좌로 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(v.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
+       ${v.pickup ? '<p class="subt">현장결제는 픽업 시 결제해 주시면 됩니다.</p>' : ''}`;
   return `<p class="subt" style="margin:0 0 10px">${esc(v.items)}</p>
     ${v.pickup ? pickCard() : `<p class="subt">${esc(v.when)} 직접 배송해 드려요${v.ship_fee ? ` (배송비 ${won(v.ship_fee)} 포함)` : ' (무료배송)'}.</p>`}
-    <div class="bank">아래 계좌로 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(v.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
-    </p>현장결제는 픽업시 결제 해주시면 됩니다.</p>
+    ${payBox}
     ${v.pickup ? `<p class="subt">${esc(v.when)} 상품이 준비되면 문자로 알려드려요.</p>` : ''}`;
 }
 function showDone(o, items){
-  const when = items.every(x => x.p.regular) ? '입금 확인 후' : items.some(x => x.p.regular) ? '일반 상품은 입금 확인 후, 공동구매 상품은 마감 후' : '마감 후';
+  const paid = o.pay === CARDPAY ? '결제 확인 후' : '입금 확인 후';
+  const when = items.every(x => x.p.regular) ? paid : items.some(x => x.p.regular) ? `일반 상품은 ${paid}, 공동구매 상품은 마감 후` : '마감 후';
   const v = {
     order_no: o.order_no, at: nowKST().slice(0, 16), name: o.name, total: o.total, ship_fee: o.ship_fee, when,
     items: items.map(x => `${x.p.name} ${x.qty}개`).join(' · '), pickup: o.receive === PICKUP,
+    pay: o.pay || BANKPAY, phone: o.phone, goodname: o.goodname,
   };
   saveOrder(v);
+  if (v.pay === CARDPAY && !DEMO_MODE) return v;   // 곧바로 결제 화면으로 이동하므로 완료 화면은 돌아온 뒤에 보여줌
   $('#dlgBody').innerHTML = `<div class="done-box">
     <h2>주문이 접수됐어요</h2>
     <p class="subt">주문번호</p><span class="no">${esc(o.order_no)}</span>
@@ -565,6 +612,23 @@ function showDone(o, items){
     <div class="row"><button class="btn ghost" id="copyBank">계좌 복사</button><button class="btn" id="ok">확인</button></div></div>`;
   $('#ok').onclick = () => $('#dlg').close();
   $('#copyBank').onclick = async () => { try { await navigator.clipboard.writeText(CONFIG.BANK); toast('계좌번호를 복사했어요'); } catch(e) { toast(CONFIG.BANK); } };
+  if (v.pay === CARDPAY) $('#copyBank').remove();
+  return v;
+}
+// 페이앱 결제 화면에서 돌아왔을 때 (?paid=주문번호)
+function showCardReturn(no){
+  const list = getOrders(), v = list.find(x => x.order_no === no);
+  history.replaceState(null, '', location.pathname + location.hash);
+  if (!v) return;
+  v.card_back = true; ls.set('gb_orders', list);
+  $('#dlgBody').innerHTML = `<div class="done-box">
+    <h2>주문이 접수됐어요</h2>
+    <p class="subt">주문번호</p><span class="no">${esc(v.order_no)}</span>
+    <div style="text-align:left">${orderBody(v)}</div>
+    <p class="subt" style="font-size:13px">주문 내용은 화면 위 <b>내 주문</b>에서 다시 볼 수 있어요.</p>
+    <div class="row"><button class="btn" id="ok">확인</button></div></div>`;
+  $('#ok').onclick = () => $('#dlg').close();
+  $('#dlg').showModal();
 }
 function openMyOrders(){
   $('#dlgBody').innerHTML = `<h2>내 주문</h2><p class="subt">이 기기에서 주문한 최근 5건이에요. 입금·준비 상태는 매장에 문의해 주세요.</p>
@@ -590,6 +654,12 @@ document.addEventListener('click', e => {
   if (e.target.closest('#cartOpen')) openCart();
   if (e.target.closest('#myOrders')) openMyOrders();
   if (cp) navigator.clipboard?.writeText(cp.dataset.copy).then(() => toast('주소를 복사했어요'), () => toast(cp.dataset.copy));
+  const pc = e.target.closest('[data-paycard]');
+  if (pc) {
+    const v = getOrders().find(x => x.order_no === pc.dataset.paycard);
+    if (v && v.phone && v.total) { pc.disabled = true; pc.textContent = '결제 화면으로 이동 중…'; payCard(v); }
+    else toast('주문 정보를 찾지 못했어요. 전화로 문의해 주세요: ' + CONFIG.CONTACT);
+  }
 });
 $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg').close(); });
 
@@ -598,6 +668,9 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
   $('#brand').innerHTML = `${esc(CONFIG.BRAND)}<small>공동구매</small>`;
   $('#contact').textContent = `문의 ${CONFIG.CONTACT}`; $('#contact').href = 'tel:' + CONFIG.CONTACT.replace(/\D/g,'');
   $('#stepBank').textContent = CONFIG.BANK;
+  if (CARD_ON) $('#stepPay').innerHTML = '<b>결제</b> — 카드결제 또는 계좌 입금하면 확정';
+  const paidNo = new URLSearchParams(location.search).get('paid');
+  if (paidNo) showCardReturn(paidNo);
   if (!CONFIG.ALLOW_DELIVERY) $('#stepRecv').innerHTML = '<b>매장 픽업</b> — 준비되면 문자로 알려드려요';
   $('#footer').innerHTML = `${esc(CONFIG.BRAND)} · 문의 ${esc(CONFIG.CONTACT)}${CONFIG.ADDRESS ? ' · ' + esc(CONFIG.ADDRESS) : ''}<br>공동구매는 목표 수량 미달 시 취소될 수 있으며, 이 경우 입금액은 전액 환불됩니다.`;
   if (DEMO_MODE) $('#notice').textContent = '데모 모드입니다. CONFIG에 SheetDB 주소를 넣으면 실제 시트와 연결됩니다.';
