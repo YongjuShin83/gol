@@ -27,6 +27,7 @@ header .wrap{display:flex;align-items:center;justify-content:space-between;heigh
 .brand small{font-family:'Noto Sans KR',sans-serif;font-weight:500;font-size:13px;color:var(--accent);margin-left:6px}
 .hdr-r{display:flex;align-items:center;gap:12px}
 .contact{font-size:13px;color:var(--sub);text-decoration:none}
+.contact .c-ic{display:none}
 .myorders{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;font-weight:500;cursor:pointer}
 .myorders[hidden]{display:none}
 
@@ -136,7 +137,10 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
 
 @media (max-width:560px){
   .grid{grid-template-columns:1fr}
-  .contact{display:none}
+  .hdr-r{gap:6px}
+  .contact{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 10px;font-size:12px;font-weight:500;white-space:nowrap}
+  .contact .c-lbl{display:none}
+  .contact .c-ic{display:inline}
 }
 </style>
 </head>
@@ -712,7 +716,7 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
 (async function init(){
   document.title = `${CONFIG.BRAND} 공동구매`;
   $('#brand').innerHTML = `${esc(CONFIG.BRAND)}<small>공동구매</small>`;
-  $('#contact').textContent = `문의 ${CONFIG.CONTACT}`; $('#contact').href = 'tel:' + CONFIG.CONTACT.replace(/\D/g,'');
+  $('#contact').innerHTML = `<span class="c-lbl">문의 </span><span class="c-ic">☎ </span>${esc(CONFIG.CONTACT)}`; $('#contact').href = 'tel:' + CONFIG.CONTACT.replace(/\D/g,'');
   $('#stepBank').textContent = CONFIG.BANK;
   if (CARD_ON) $('#stepPay').innerHTML = '<b>결제</b> — 카드결제 또는 계좌 입금하면 참여 완료 (목표 미달 시 전액 환불)';
   const paidNo = new URLSearchParams(location.search).get('paid');
