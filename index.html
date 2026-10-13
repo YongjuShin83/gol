@@ -155,7 +155,7 @@ footer{border-top:1px solid var(--line);padding:24px 0 40px;color:var(--sub);fon
     <p>목표 수량이 모이면 공동구매가 확정되고, 마감 후 한 번에 짜서 보내드립니다.</p>
     <ol class="steps">
       <li><b>참여 신청</b> — 수량과 연락처만 남기면 끝</li>
-      <li id="stepPay"><b>입금</b> — 안내된 계좌로 입금하면 확정</li>
+      <li id="stepPay"><b>입금</b> — 주문 후 안내된 계좌로 입금하면 참여 완료 (목표 미달 시 전액 환불)</li>
       <li><b>계좌번호</b> <span id="stepBank"></span></li>
       <li id="stepRecv"><b>마감 후 수령</b> — 매장 픽업 또는 배송으로</li>
     </ol>
@@ -407,11 +407,20 @@ function card(p){
     : p.closed ? `<span class="tag">마감</span>`
     : p.reached ? `<span class="tag done">공구 확정</span>`
     : pct >= 70 ? `<span class="tag hot">마감 임박</span>` : '';
-  const leftTxt = p.closed ? '' : (p.left !== Infinity ? ` · <b>${p.left}개</b> 남음` : '');
+  // 공구 진행 문구: 목표까지 몇 개 남았는지 보여주고, 수량 한정은 얼마 안 남았을 때만 표시
+  const need = p.target - p.joined;
+  const goalTxt = !p.target ? `<b>${p.joined}개</b> 참여 중`
+    : p.reached ? `목표 ${p.target}개 달성! <b>${p.joined}개</b> 참여`
+    : `목표 ${p.target}개 중 <b>${p.joined}개</b> 모였어요`;
+  const needTxt = p.closed || !p.target ? ''
+    : p.reached ? '공동구매가 확정됐어요. 마감 전까지 더 참여할 수 있어요.'
+    : `<b>${need}개</b> 더 모이면 공동구매 확정!`;
+  const leftTxt = !p.closed && p.left !== Infinity && p.left <= 10 ? ` · 한정 <b>${p.left}개</b> 남음` : '';
   const meta = p.regular
     ? (p.max && !p.closed ? `<div class="stats"><span>재고 <b>${p.left}개</b></span><span></span></div>` : '')
     : `${p.target ? `<div class="meter${p.reached?' ok':''}"><i style="width:${pct}%"></i></div>` : ''}
-      <div class="stats"><span><b>${p.joined}</b>${p.target?` / ${p.target}개 참여`:'개 참여'}${leftTxt}</span><span>${p.closed?'마감':esc(remain(p.deadline))}</span></div>`;
+      <div class="stats"><span>${goalTxt}</span><span>${p.closed?'마감':esc(remain(p.deadline))}</span></div>
+      ${needTxt || leftTxt ? `<div class="stats"><span>${needTxt}${leftTxt}</span><span></span></div>` : ''}`;
   const btn = p.closed
     ? `<button class="btn" disabled>${p.regular ? (p.left <= 0 ? '품절되었습니다' : '판매가 종료되었습니다') : '마감되었습니다'}</button>`
     : `<button class="btn" data-add="${esc(p.id)}">${p.regular ? '장바구니 담기' : '공동구매 담기'}</button>`;
@@ -511,7 +520,7 @@ function openCart(){
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <label class="consent"><input type="checkbox" name="agree"><span>개인정보 수집·이용에 동의합니다 (필수)
       <details><summary>자세히</summary>수집 항목: 이름, 휴대폰 번호, 주소 / 목적: 주문 확인·배송·픽업 안내 / 보유 기간: 주문 완료 후 ${CONFIG.PRIVACY_DAYS}일. 동의하지 않으면 주문이 어렵습니다.</details></span></label>
-    ${anyGroup ? '<p class="pick" style="margin:-6px 0 12px">공동구매 상품은 마감 후, 일반 상품은 입금 확인 후 준비해 드려요.</p>' : ''}
+    ${anyGroup ? '<p class="pick" style="margin:-6px 0 12px">공동구매 상품은 마감 후, 일반 상품은 입금 확인 후 준비해 드려요.<br>공동구매가 목표 수량에 못 미치면 취소되고, 입금하신 금액은 전액 환불해 드려요.</p>' : ''}
     <div class="total">
       <div class="ln" id="feeRow" style="display:none;font-size:14px;color:var(--sub)"><span>상품 <span id="itemsAmt"></span> + 배송비</span><span id="feeAmt"></span></div>
       <div id="freeHint" style="display:none;font-size:13px;color:var(--accent);text-align:right"></div>
@@ -705,7 +714,7 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
   $('#brand').innerHTML = `${esc(CONFIG.BRAND)}<small>공동구매</small>`;
   $('#contact').textContent = `문의 ${CONFIG.CONTACT}`; $('#contact').href = 'tel:' + CONFIG.CONTACT.replace(/\D/g,'');
   $('#stepBank').textContent = CONFIG.BANK;
-  if (CARD_ON) $('#stepPay').innerHTML = '<b>결제</b> — 카드결제 또는 계좌 입금하면 확정';
+  if (CARD_ON) $('#stepPay').innerHTML = '<b>결제</b> — 카드결제 또는 계좌 입금하면 참여 완료 (목표 미달 시 전액 환불)';
   const paidNo = new URLSearchParams(location.search).get('paid');
   if (paidNo) showCardReturn(paidNo);
   if (!CONFIG.ALLOW_DELIVERY) $('#stepRecv').innerHTML = '<b>매장 픽업</b> — 준비되면 문자로 알려드려요';
