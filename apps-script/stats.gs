@@ -15,6 +15,7 @@
  *      (페이앱 결제 결과 주소 PAYAPP_FEEDBACK_URL 과 같은 주소입니다)
  */
 
+const STATS_SPREADSHEET_ID = '1uLy9s_xysOv6Bheri7htnSEP8D0VxV_pxLWqqSNgjE4';   // 주문 시트(orders_template) 주소의 /d/ 뒤 부분
 const STATS_SHEET = 'stats_events';
 const STATS_HEAD = ['time', 'date', 'event', 'visitor', 'session', 'item_id', 'item_name', 'qty', 'value', 'order_no', 'source', 'device'];
 const STATS_EVENTS = ['page_view', 'add_to_cart', 'begin_checkout', 'purchase', 'share'];
@@ -32,9 +33,9 @@ function statsLog_(p) {
     num(p.qty), num(p.value), clip(p.order_no, 30), clip(p.src, 40), clip(p.dev, 10),
   ];
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
   try {
-    const ss = SpreadsheetApp.getActive();
+    lock.waitLock(10000);
+    const ss = SpreadsheetApp.openById(STATS_SPREADSHEET_ID);
     let sh = ss.getSheetByName(STATS_SHEET);
     if (!sh) {
       sh = ss.insertSheet(STATS_SHEET);
@@ -42,8 +43,10 @@ function statsLog_(p) {
       sh.setFrozenRows(1);
     }
     sh.appendRow(row);
+  } catch (err) {
+    return statsReply_('ERROR: ' + err.message);   // 사이트에는 영향 없음. 원인 확인용
   } finally {
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e) {}
   }
   return statsReply_('OK');
 }
