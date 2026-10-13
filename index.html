@@ -219,6 +219,9 @@ const CONFIG = {
   // 방문자 통계. ID를 넣으면 자동으로 켜지고, 비워두면 꺼집니다.
   GA4_ID: 'G-6V2WT3023C',        // 구글 애널리틱스 측정 ID (예: 'G-ABC123XYZ')
   NAVER_WA_ID: '1c7defdabb016c0',   // 네이버 애널리틱스 사이트 ID (예: '1a2b3c4d5e6f7')
+  // 구글시트 통계(stats_events 탭). Apps Script 웹 앱 주소. 비워두면 PAYAPP_FEEDBACK_URL 을 씀
+  // 사장님 방문은 빼려면 사이트 주소 뒤에 ?nostat=1 을 붙여 한 번 열기 (다시 세려면 ?nostat=0)
+  STATS_URL: '',
 
   CACHE_MINUTES: 5,  // 같은 방문자가 이 시간 안에 다시 오면 시트를 다시 읽지 않음 (요청 수 절약)
   PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일)
@@ -243,14 +246,37 @@ const STATS = (() => {
   const item = (p, qty = 1) => ({item_id: p.id, item_name: p.name, item_category: p.regular ? '일반' : '공동구매', price: unitOf(p), quantity: qty});
   const ga = (name, params) => { try { window.gtag && CONFIG.GA4_ID && gtag('event', name, params); } catch(e){} };
   const naverConv = (type, value) => { try { if (window.wcs && CONFIG.NAVER_WA_ID) wcs.trans({type, value: value != null ? String(value) : undefined}); } catch(e){} };
+
+  // 구글시트 기록 — 방문자·세션은 무작위 번호라 누구인지 알 수 없음
+  const SHEET_URL = CONFIG.STATS_URL || CONFIG.PAYAPP_FEEDBACK_URL;
+  const store = (s, k) => { try { let v = s.getItem(k); if (!v) { v = Math.random().toString(36).slice(2, 12); s.setItem(k, v); } return v; } catch(e){ return ''; } };
+  const qs = new URLSearchParams(location.search);
+  try { if (qs.get('nostat') === '1') localStorage.setItem('gol_nostat', '1'); if (qs.get('nostat') === '0') localStorage.removeItem('gol_nostat'); } catch(e){}
+  const skip = (() => { try { return !!localStorage.getItem('gol_nostat'); } catch(e){ return false; } })();
+  const base = {
+    vid: store(window.localStorage, 'gol_vid'), sid: store(window.sessionStorage, 'gol_sid'),
+    src: qs.get('utm_source') || (() => { try { const h = new URL(document.referrer).hostname; return h && h !== location.hostname ? h.replace(/^www\./, '') : 'direct'; } catch(e){ return 'direct'; } })(),
+    dev: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'pc',
+  };
+  const sheet = (ev, extra = {}) => {
+    if (!SHEET_URL || skip || !CONFIG.PRODUCTS_API) return;
+    try { navigator.sendBeacon(SHEET_URL, new URLSearchParams({ev, ...base, ...extra})); } catch(e){}
+  };
+  sheet('page_view');
+
   return {
-    addToCart(p){ ga('add_to_cart', {currency: 'KRW', value: unitOf(p), items: [item(p)]}); naverConv('add_to_cart'); },
-    beginCheckout(items){ ga('begin_checkout', {currency: 'KRW', value: items.reduce((a, x) => a + unitOf(x.p) * x.qty, 0), items: items.map(x => item(x.p, x.qty))}); },
+    addToCart(p){ ga('add_to_cart', {currency: 'KRW', value: unitOf(p), items: [item(p)]}); naverConv('add_to_cart');
+      sheet('add_to_cart', {item_id: p.id, item_name: p.name, qty: 1, value: unitOf(p)}); },
+    beginCheckout(items){ const value = items.reduce((a, x) => a + unitOf(x.p) * x.qty, 0);
+      ga('begin_checkout', {currency: 'KRW', value, items: items.map(x => item(x.p, x.qty))});
+      sheet('begin_checkout', {qty: items.reduce((a, x) => a + x.qty, 0), value}); },
     purchase(no, items, total, fee, pay, recv){
       ga('purchase', {transaction_id: no, currency: 'KRW', value: total, shipping: fee, payment_type: pay, shipping_tier: recv, items: items.map(x => item(x.p, x.qty))});
       naverConv('purchase', total);
+      sheet('purchase', {order_no: no, qty: items.reduce((a, x) => a + x.qty, 0), value: total});
     },
-    share(p){ ga('share', {method: navigator.share ? 'native' : 'link', content_type: 'product', item_id: p.id}); },
+    share(p){ ga('share', {method: navigator.share ? 'native' : 'link', content_type: 'product', item_id: p.id});
+      sheet('share', {item_id: p.id, item_name: p.name}); },
   };
 })();
 

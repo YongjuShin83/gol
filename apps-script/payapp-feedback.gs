@@ -19,6 +19,7 @@
 const PAYAPP_ORDER_SHEET = 'orders_template';   // 주문이 쌓이는 탭 이름
 
 function doPost(e) {
+  if (e && e.parameter && e.parameter.ev) return statsLog_(e.parameter);   // 방문·장바구니 기록 (stats.gs)
   const p = (e && e.parameter) || {};
   const props = PropertiesService.getScriptProperties();
 
