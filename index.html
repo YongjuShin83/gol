@@ -204,9 +204,43 @@ const CONFIG = {
   PRODUCTS_API: 'https://sheetdb.io/api/v1/oehravh1238d4',  // 상품 시트 (권한: Read만)
   ORDERS_API:   'https://sheetdb.io/api/v1/6stebbx7m1x8h',  // 주문 시트 (권한: Create만)
 
+  // 방문자 통계. ID를 넣으면 자동으로 켜지고, 비워두면 꺼집니다.
+  GA4_ID: '',        // 구글 애널리틱스 측정 ID (예: 'G-ABC123XYZ')
+  NAVER_WA_ID: '',   // 네이버 애널리틱스 사이트 ID (예: '1a2b3c4d5e6f7')
+
   CACHE_MINUTES: 5,  // 같은 방문자가 이 시간 안에 다시 오면 시트를 다시 읽지 않음 (요청 수 절약)
   PRIVACY_DAYS: 90,  // 개인정보 보유 기간(일)
 };
+
+/* ---------- 방문자 통계 (GA4 + 네이버 애널리틱스) ----------
+   이름·전화번호·주소 같은 개인정보는 보내지 않고, 상품·금액·주문번호만 보냅니다. */
+const STATS = (() => {
+  const load = src => { const s = document.createElement('script'); s.async = true; s.src = src; document.head.appendChild(s); return s; };
+  if (CONFIG.GA4_ID) {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', CONFIG.GA4_ID);
+    load('https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(CONFIG.GA4_ID));
+  }
+  if (CONFIG.NAVER_WA_ID) {
+    window.wcs_add = window.wcs_add || {};
+    wcs_add['wa'] = CONFIG.NAVER_WA_ID;
+    load('https://wcs.naver.net/wcslog.js').onload = () => { try { window.wcs && wcs_do(); } catch(e){} };
+  }
+  const item = (p, qty = 1) => ({item_id: p.id, item_name: p.name, item_category: p.regular ? '일반' : '공동구매', price: unitOf(p), quantity: qty});
+  const ga = (name, params) => { try { window.gtag && CONFIG.GA4_ID && gtag('event', name, params); } catch(e){} };
+  const naverConv = (type, value) => { try { if (window.wcs && CONFIG.NAVER_WA_ID) wcs.trans({type, value: value != null ? String(value) : undefined}); } catch(e){} };
+  return {
+    addToCart(p){ ga('add_to_cart', {currency: 'KRW', value: unitOf(p), items: [item(p)]}); naverConv('add_to_cart'); },
+    beginCheckout(items){ ga('begin_checkout', {currency: 'KRW', value: items.reduce((a, x) => a + unitOf(x.p) * x.qty, 0), items: items.map(x => item(x.p, x.qty))}); },
+    purchase(no, items, total, fee, pay, recv){
+      ga('purchase', {transaction_id: no, currency: 'KRW', value: total, shipping: fee, payment_type: pay, shipping_tier: recv, items: items.map(x => item(x.p, x.qty))});
+      naverConv('purchase', total);
+    },
+    share(p){ ga('share', {method: navigator.share ? 'native' : 'link', content_type: 'product', item_id: p.id}); },
+  };
+})();
 
 /* ---------- 데모 데이터 (API 주소가 비어 있을 때만 사용) ---------- */
 const DEMO = (() => {
@@ -441,7 +475,7 @@ function addToCart(p){
   const c = CART.find(x => x.id === p.id);
   if (c) { if (c.qty >= maxOf(p)) return toast(`남은 수량은 ${p.left}개예요`); c.qty++; }
   else CART.push({id: p.id, qty: 1});
-  saveCart(); updateCartBar(); toast('장바구니에 담았어요');
+  saveCart(); updateCartBar(); toast('장바구니에 담았어요'); STATS.addToCart(p);
 }
 function updateCartBar(){
   const n = cartCount();
@@ -454,6 +488,7 @@ function openCart(){
   const removed = cleanCart(); updateCartBar();
   const items = cartItems();
   if (!items.length) { toast(removed ? '마감된 상품이 빠져서 장바구니가 비었어요' : '장바구니가 비어 있어요'); return; }
+  STATS.beginCheckout(items);
   const canShip = items.every(x => x.p.ship);
   const anyGroup = items.some(x => !x.p.regular);
   $('#dlgBody').innerHTML = `
@@ -559,6 +594,7 @@ async function submitCart(f, canShip){
   const btn = $('#submit'); btn.disabled = true; btn.textContent = '보내는 중…';
   try {
     await postOrder(rows);
+    STATS.purchase(no, items, sum + fee, fee, pay, recv);
     // 화면의 참여 수량을 바로 올려 보여줌 (시트 반영은 몇 분 걸릴 수 있음)
     const c = ss.get('gb_products');
     items.forEach(({p, qty}) => {
@@ -640,6 +676,7 @@ function openMyOrders(){
 
 /* ---------- 공유 ---------- */
 async function share(p){
+  STATS.share(p);
   const url = location.href.split('#')[0] + '#p-' + p.id;
   const data = {title: p.regular ? p.name : `${p.name} 공동구매`, text: p.regular ? `${p.name} ${won(unitOf(p))} — ${CONFIG.BRAND}` : `${p.name} 공동구매 ${won(unitOf(p))} — 같이 모아요!`, url};
   try { if (navigator.share) return await navigator.share(data); await navigator.clipboard.writeText(url); toast('링크를 복사했어요'); }
