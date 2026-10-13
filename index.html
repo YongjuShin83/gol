@@ -267,11 +267,11 @@ const num = v => { const n = parseInt(String(v ?? '').replace(/[^\d-]/g,''), 10)
 const won = n => n.toLocaleString('ko-KR') + '원';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad = n => String(n).padStart(2,'0');
-function parseDeadline(s){
-  s = String(s||'').trim().replace(/\./g,'-').replace(/\s+/,'T');
-  if (!s) return null;
-  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(s)) s += 'T23:59:59';
-  const d = new Date(s); return isNaN(d) ? null : d;
+function parseDeadline(str) {
+  const m = String(str).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return null;
+  // 마감일 당일 23:59:59(한국시간)까지 유효
+  return new Date(+m[1], +m[2] - 1, +m[3], 23, 59, 59);
 }
 function remain(dl){
   if (!dl) return '';
