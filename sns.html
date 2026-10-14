@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>골목상회 홍보글 작업대</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@700&display=swap" rel="stylesheet">
+<style>
+/* Layout: 왼쪽 상품 정보 입력 → 오른쪽 채널 탭(밴드·블로그·인스타·당근) 미리보기와 복사. 좁은 화면에선 위아래로 쌓임 */
+:root{
+  --bg:#faf6ef; --card:#ffffff; --ink:#2a2118; --sub:#76685a; --line:#eadfce;
+  --accent:#b5541c; --accent-soft:#f6e3d3; --ok:#3f7d4e; --warn:#a86a00;
+  --band:#1fb84f; --blog:#03a94d; --insta:#c13584; --daangn:#e8742f;
+  --serif:'Noto Serif KR','Apple SD Gothic Neo',serif;
+  --sans:'Noto Sans KR',system-ui,'Apple SD Gothic Neo',sans-serif;
+  --mono:ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#1c1712; --card:#262019; --ink:#f1e8dc; --sub:#b3a493; --line:#3a3027;
+  --accent:#e08a52; --accent-soft:#3a281b; --ok:#7fc08e; --warn:#e0b050;
+  --band:#4bd377; --blog:#3fcf7c; --insta:#e46bb0; --daangn:#f39a5f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#1c1712; --card:#262019; --ink:#f1e8dc; --sub:#b3a493; --line:#3a3027;
+  --accent:#e08a52; --accent-soft:#3a281b; --ok:#7fc08e; --warn:#e0b050;
+  --band:#4bd377; --blog:#3fcf7c; --insta:#e46bb0; --daangn:#f39a5f; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:20px}
+header{display:grid;gap:4px}
+h1{font-family:var(--serif);font-size:clamp(22px,3.6vw,30px);margin:0;letter-spacing:-.02em;text-wrap:balance}
+.lead{color:var(--sub);margin:0;max-width:66ch;font-size:14px}
+.main{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){ .main{grid-template-columns:minmax(0,1fr)} }
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;min-width:0}
+.panel h2{font-size:15px;margin:0;font-weight:700}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:12.5px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:4px 11px;cursor:pointer}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.hint{font-size:12px;color:var(--sub);margin:0}
+.sheet{display:grid;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.sheetbar{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.hint.bad{color:var(--warn)}
+.progress{font-size:12.5px;color:var(--sub);display:grid;gap:5px}
+.progress b{color:var(--ink);font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.fields .full{grid-column:1/-1}
+label{display:grid;gap:4px;font-size:12.5px;color:var(--sub);min-width:0}
+input,select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:64px;line-height:1.5}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;width:max-content;max-width:100%}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--sub);padding:6px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+:is(button,input,select,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{font:inherit;font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:7px}
+.tab i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.tab[aria-selected="true"]{border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c)}
+.preview{display:grid;gap:12px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12.5px;color:var(--sub)}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+.meta .warn{color:var(--warn)}
+.post{white-space:pre-wrap;word-break:keep-all;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px;font-size:14.5px;line-height:1.75;min-height:260px;margin:0;font-family:var(--sans)}
+.post[contenteditable="true"]{outline:none}
+.post:focus{border-color:var(--accent)}
+.titlebox{display:grid;gap:4px}
+.titlebox .post{min-height:0;font-weight:700;padding:10px 14px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{font:inherit;font-size:13.5px;font-weight:500;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 16px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn:hover{filter:brightness(.97)}
+.tips{margin:0;padding-left:18px;font-size:13px;color:var(--sub);display:grid;gap:4px}
+.tips b{color:var(--ink);font-weight:500}
+.url{font-family:var(--mono);font-size:11.5px;color:var(--sub);overflow-wrap:anywhere}
+.example{font-size:11px;font-weight:700;color:var(--warn);border:1px solid currentColor;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+body{margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>골목상회 홍보글 작업대</h1>
+    <p class="lead">왼쪽에 상품 정보를 넣으면 밴드·블로그·인스타·당근에 맞는 글이 오른쪽에 바로 만들어집니다. 글은 미리보기 칸에서 직접 고칠 수 있고, 각 글에는 채널별 추적 링크가 들어가 있어 어느 게시글에서 주문이 나왔는지 통계로 볼 수 있어요.</p>
+  </header>
+
+  <div class="main">
+    <section class="panel" aria-labelledby="h-prod">
+      <h2 id="h-prod">상품 정보</h2>
+      <div class="sheet" id="sheetBox">
+        <label for="prodSel">상품 시트에서 고르기
+          <select id="prodSel" disabled><option>상품 시트 불러오는 중…</option></select>
+        </label>
+        <div class="sheetbar">
+          <span class="hint" id="sheetStatus">상품 시트(products_template)에 연결하는 중이에요.</span>
+          <button type="button" class="chip" id="sheetReload" hidden>다시 불러오기</button>
+        </div>
+      </div>
+      <div id="presetBox" hidden>
+        <div class="presets" id="presets"></div>
+        <p class="hint" style="margin-top:6px">예시 상품을 눌러 시작한 뒤 실제 가격·마감일로 바꿔 주세요.</p>
+      </div>
+      <div class="seg" role="group" aria-label="판매 방식">
+        <button type="button" id="t-group" aria-pressed="true">공동구매</button>
+        <button type="button" id="t-regular" aria-pressed="false">일반 판매</button>
+      </div>
+      <div class="fields">
+        <label class="full" for="f-name">상품명<input id="f-name"></label>
+        <label for="f-price">정가 (원)<input id="f-price" inputmode="numeric"></label>
+        <label for="f-gp" class="g">공구가 (원)<input id="f-gp" inputmode="numeric"></label>
+        <label for="f-target" class="g">목표 수량<input id="f-target" inputmode="numeric"></label>
+        <label for="f-deadline" class="g">마감일<input id="f-deadline" type="date"></label>
+        <label for="f-joined" class="g">현재 참여 수량<input id="f-joined" inputmode="numeric"></label>
+        <label for="f-max" class="g">최대 수량<input id="f-max" inputmode="numeric"></label>
+        <div class="full progress g" id="progress" hidden></div>
+        <label class="full" for="f-points">자랑할 점 (한 줄에 하나씩)<textarea id="f-points" rows="3"></textarea></label>
+        <label for="f-recv">받는 방법<select id="f-recv">
+          <option value="both">매장 픽업 + 배송</option>
+          <option value="pickup">매장 픽업만</option>
+          <option value="ship">배송만</option>
+        </select></label>
+        <label for="f-camp">공구 이름 (통계용, 영문)<input id="f-camp" autocomplete="off"></label>
+        <label class="full" for="f-extra">덧붙일 말 (선택)<input id="f-extra" placeholder="예: 첫 공구라 선착순 10분께 참깨볶음 소분 드려요"></label>
+      </div>
+    </section>
+
+    <section class="panel preview" aria-labelledby="h-prev">
+      <h2 id="h-prev" hidden>채널별 게시글</h2>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="titlebox" id="titleBox" hidden>
+        <span class="hint">블로그 제목</span>
+        <div class="post" id="title" contenteditable="true" spellcheck="false"></div>
+      </div>
+      <div class="post" id="post" contenteditable="true" spellcheck="false" role="textbox" aria-multiline="true" aria-label="게시글 본문"></div>
+      <div class="meta" id="meta"></div>
+      <div class="actions">
+        <button class="btn primary" type="button" id="copyBody">본문 복사</button>
+        <button class="btn" type="button" id="copyTitle" hidden>제목 복사</button>
+        <button class="btn" type="button" id="copyLink">링크만 복사</button>
+        <button class="btn" type="button" id="regen">다른 문장으로</button>
+      </div>
+      <ul class="tips" id="tips"></ul>
+    </section>
+  </div>
+</div>
+
+<script>
+const STORE = {name:'골목상회', area:'창원 북면', addr:'경남 창원시 의창구 북면 무동로226번길 6-25 중앙프라자 101호', phone:'010-8173-1070'};
+const BASE = 'https://gonggu.golmok.ai.kr/';
+const CH = {
+  band:   {label:'밴드',   c:'var(--band)',   src:'band',      med:'community', limit:null},
+  blog:   {label:'블로그', c:'var(--blog)',   src:'naver_blog', med:'blog',     limit:null},
+  insta:  {label:'인스타', c:'var(--insta)',  src:'instagram', med:'social',    limit:2200},
+  daangn: {label:'당근',   c:'var(--daangn)', src:'daangn',    med:'local',     limit:1000},
+};
+const PRESETS = [
+  {key:'sesame', label:'저온압착 참기름', type:'group', name:'저온압착 참기름 350ml', price:28000, gp:22000, target:30, days:5, recv:'both', camp:'sesame_oil',
+   points:'국산 참깨 100%\n낮은 온도로 볶아 고소함은 살리고 탄 맛은 없앴어요\n마감 후 그 주에 짜서 보내드려요'},
+  {key:'perilla', label:'생들기름', type:'group', name:'생들기름 350ml', price:26000, gp:20500, target:20, days:4, recv:'pickup', camp:'perilla_raw',
+   points:'볶지 않고 짠 생들기름\n오메가3가 살아 있어 샐러드·나물에 좋아요\n냉장 보관 필수라 매장 픽업으로만 받아요'},
+  {key:'regular', label:'참기름 180ml (일반)', type:'regular', name:'참기름 180ml', price:15000, gp:'', target:'', days:0, recv:'both', camp:'sesame_180',
+   points:'매장에서 매일 짜는 기본 참기름\n작은 병이라 선물·첫 구매용으로 좋아요'},
+];
+
+let S = {}, tab = 'band', variant = 0, edited = false;
+const $ = s => document.querySelector(s);
+const ss = {get(k){try{const v=sessionStorage.getItem(k);return v?JSON.parse(v):null}catch(e){return null}}, set(k,v){try{sessionStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const ls = {get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}, set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const won = n => n ? Number(n).toLocaleString('ko-KR') + '원' : '';
+const num = v => Number(String(v).replace(/[^\d]/g,'')) || 0;
+const dPlus = n => { const d = new Date(Date.now() + n*864e5); return d.toISOString().slice(0,10); };
+const pick = (arr) => arr[variant % arr.length];
+const josa = (w, a, b) => { const c = w.charCodeAt(w.length-1); return (c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28) ? a : b; };
+
+function fromPreset(p){
+  return {preset:p.key, type:p.type, name:p.name, price:p.price, gp:p.gp, target:p.target, deadline:p.days ? dPlus(p.days) : '', recv:p.recv, camp:p.camp, points:p.points, extra:''};
+}
+function link(ch){
+  const c = CH[ch]; const camp = (S.camp||'').trim().toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+  return BASE + '?utm_source=' + c.src + '&utm_medium=' + c.med + (camp ? '&utm_campaign=' + camp : '') + (S.id ? '#p-' + encodeURIComponent(S.id) : '');
+}
+// 상품 종류에 따라 문장을 바꿈: 기름은 '짜서', 즙은 '착즙해서', 가루는 '빻아서', 그 외는 '준비해서'
+function kindOf(n){
+  if (/기름/.test(n)) return {noun:'기름', made:'짜서', fresh:'갓 짠', daily:'매일 짜는', todayMade:'오늘 짠', oil:true};
+  if (/즙|주스|청$/.test(n)) return {noun:'즙', made:'착즙해서', fresh:'갓 착즙한', daily:'직접 착즙하는', todayMade:'새로 착즙한', oil:false};
+  if (/가루|미숫/.test(n)) return {noun:'가루', made:'빻아서', fresh:'갓 빻은', daily:'직접 빻는', todayMade:'새로 빻은', oil:false};
+  if (/떡/.test(n)) return {noun:'떡', made:'준비해서', fresh:'신선한', daily:'정성껏 준비한', todayMade:'새로 들어온', oil:false};
+  return {noun:'상품', made:'준비해서', fresh:'신선한', daily:'방앗간이 고른', todayMade:'새로 들어온', oil:false};
+}
+function progressLine(f, style){
+  if (!f.group || !f.target) return '';
+  if (f.joined >= f.target) return style === 'short' ? `목표 ${f.target}개 달성! 확정됐어요` : `🎉 목표 ${f.target}개 달성, 공구 확정됐어요${f.max && f.max > f.joined ? ` (남은 수량 ${f.max - f.joined}개)` : ''}`;
+  if (f.joined > 0) return style === 'short' ? `지금 ${f.joined}개 모였어요 · ${f.target - f.joined}개 더 모이면 확정` : `👥 지금 ${f.joined}개 모였어요! ${f.target - f.joined}개만 더 모이면 확정돼요`;
+  return style === 'short' ? `목표 ${f.target}개 모이면 확정` : `👥 목표 ${f.target}개 모이면 확정`;
+}
+function facts(){
+  const group = S.type === 'group';
+  const price = num(S.price), gp = num(S.gp);
+  const off = group && price && gp && gp < price ? Math.round((1 - gp/price)*100) : 0;
+  let dl = '', dlShort = '', left = null;
+  if (group && S.deadline){
+    const d = new Date(S.deadline + 'T23:59:00+09:00');
+    const w = '일월화수목금토'[d.getDay()];
+    dl = `${d.getMonth()+1}월 ${d.getDate()}일(${w})`; dlShort = `${d.getMonth()+1}/${d.getDate()}(${w})`;
+    left = Math.ceil((d - Date.now())/864e5);
+  }
+  const recv = {both:'매장 픽업 또는 배송', pickup:'매장 픽업', ship:'배송'}[S.recv];
+  const pts = (S.points||'').split('\n').map(s=>s.trim()).filter(Boolean);
+  return {group, price, gp, off, dl, dlShort, left, recv, pts, unit: group && gp ? gp : price, name: S.name || '상품명',
+          target: num(S.target), joined: num(S.joined), max: num(S.max), ...kindOf(S.name || '')};
+}
+
+/* ---------- 채널별 글 ---------- */
+function band(f){
+  const L = [];
+  L.push(f.group ? pick([`[공동구매] ${f.name}`, `🌾 ${f.name} 공동구매 열었어요`, `${f.name}, 같이 모아서 싸게 받아요`]) : pick([`${f.name} 들어왔어요`, `[골목상회] ${f.name}`]));
+  L.push('');
+  L.push(f.group ? pick([
+    `안녕하세요, ${STORE.name}입니다.\n이번에 ${f.name} 공동구매를 엽니다.\n목표 수량이 모이면 확정되고, 마감 후 한 번에 ${f.made} 보내드려요.`,
+    `방앗간 ${STORE.name}이에요.\n여럿이 모이면 더 싸지는 공동구매, 이번엔 ${f.name}입니다.\n미리 수량을 모아서 짜기 때문에 가장 신선한 상태로 받으실 수 있어요.`,
+  ]) : `안녕하세요, ${STORE.name}입니다.\n${f.name} 주문 받습니다.`);
+  L.push('');
+  if (f.pts.length){ L.push(`✔ 이런 ${f.noun}${josa(f.noun,'이에요','예요')}`); f.pts.forEach(p => L.push('· ' + p)); L.push(''); }
+  if (f.group){
+    L.push(`💰 정가 ${won(f.price)} → 공구가 ${won(f.gp)}${f.off ? ` (${f.off}% 할인)` : ''}`);
+    if (f.target) L.push(progressLine(f));
+    if (f.dl) L.push(`⏰ ${f.dl} 마감`);
+  } else L.push(`💰 ${won(f.price)}`);
+  L.push(`📦 ${f.recv}`);
+  if (S.extra) { L.push(''); L.push('🎁 ' + S.extra); }
+  L.push('');
+  L.push('👇 참여는 여기서 (수량과 연락처만 남기면 끝)');
+  L.push(link('band'));
+  L.push('');
+  L.push(pick(['궁금한 건 댓글로 남겨주세요!', '댓글로 물어보셔도 되고, 전화도 편하게 주세요.']));
+  L.push(`📞 ${STORE.phone}`);
+  return {body: L.join('\n')};
+}
+function blog(f){
+  const title = f.group
+    ? pick([`${f.name} 공동구매 | 창원 방앗간 ${STORE.name}에서 같이 모아 싸게`, `창원 북면 방앗간 ${STORE.name} ${f.name} 공동구매 안내 (${f.dlShort || '마감 임박'})`, `[공구] 마감 후 ${f.made} 보내는 ${f.name} — ${STORE.name}`])
+    : pick([`창원 방앗간 ${STORE.name} ${f.name} 주문 안내`, `${f.name}, 방앗간에서 ${f.daily} ${f.noun} — ${STORE.name}`]);
+  const L = [];
+  L.push(pick([
+    `안녕하세요, 창원 북면에서 방앗간을 하는 ${STORE.name}입니다.`,
+    `안녕하세요. 동네 방앗간 ${STORE.name}이에요.`,
+  ]));
+  L.push('');
+  L.push(f.group
+    ? `오늘은 ${f.name} 공동구매 소식을 전해드리려고 해요. 공동구매는 미리 수량을 모은 뒤 마감이 끝나면 한 번에 ${f.made} 보내드리는 방식이에요. 그래서 오래 쌓여 있던 ${f.noun}${josa(f.noun,'이','가')} 아니라, ${f.fresh} ${f.noun}${josa(f.noun,'을','를')} 공구가로 받으실 수 있습니다.`
+    : `오늘은 ${f.name}${josa(f.name,'을','를')} 소개해 드릴게요. 방앗간에서 ${f.daily} ${f.noun}입니다.`);
+  L.push('');
+  L.push(`■ 왜 이 ${f.noun}인가요`);
+  if (f.pts.length) f.pts.forEach(p => L.push(`- ${p}`)); else L.push('- (자랑할 점을 왼쪽에 적어주세요)');
+  L.push('');
+  L.push('[사진: 참깨·들깨 원료 또는 착유하는 모습]');
+  L.push('');
+  L.push(`■ ${f.group ? '공동구매' : '주문'} 안내`);
+  L.push(`- 상품: ${f.name}`);
+  if (f.group){
+    L.push(`- 정가 ${won(f.price)} → 공구가 ${won(f.gp)}${f.off ? ` (${f.off}% 할인)` : ''}`);
+    if (f.target) L.push(`- 목표 수량: ${f.target}개 (모이지 않으면 취소되고 전액 환불)${f.joined ? ` · 현재 ${f.joined}개 참여` : ''}`);
+    if (f.dl) L.push(`- 마감: ${f.dl}`);
+  } else L.push(`- 가격: ${won(f.price)}`);
+  L.push(`- 받는 방법: ${f.recv}`);
+  if (S.extra) L.push(`- 혜택: ${S.extra}`);
+  L.push('');
+  L.push('■ 참여 방법');
+  L.push('1. 아래 링크에서 수량과 연락처 남기기');
+  L.push('2. 안내된 계좌로 입금하면 확정');
+  L.push(`3. ${f.group ? '마감 후' : '입금 확인 후'} ${f.recv === '배송' ? '배송' : f.recv === '매장 픽업' ? '매장에서 수령' : '매장 픽업 또는 배송으로 수령'}`);
+  L.push('');
+  L.push(`▶ ${f.group ? '공동구매 참여하기' : '주문하기'}: ${link('blog')}`);
+  L.push('');
+  L.push(`■ 매장 위치`);
+  L.push(`${STORE.addr}`);
+  L.push(`문의 ${STORE.phone}`);
+  L.push('[지도 첨부: 네이버 지도에서 골목상회 검색 후 삽입]');
+  L.push('');
+  L.push(pick(['궁금한 점은 댓글이나 전화로 편하게 물어보세요. 감사합니다.', '읽어주셔서 감사합니다. 좋은 먹거리로 보답할게요.']));
+  L.push('');
+  L.push(tags(f, 'blog').join(' '));
+  return {title, body: L.join('\n')};
+}
+function insta(f){
+  const L = [];
+  L.push(f.group ? pick([
+    `${f.name}, 같이 모으면 ${f.off ? f.off + '% ' : ''}싸져요 🌾`,
+    `마감 후에 ${f.made} 보내는 ${f.name}`,
+    `${f.fresh} ${f.noun}${josa(f.noun,'을','를')} 공구가로 받는 방법`,
+  ]) : pick([`${f.todayMade} ${f.name} 🌾`, `방앗간에서 ${f.daily} ${f.name}`]));
+  L.push('');
+  if (f.pts.length) f.pts.slice(0,3).forEach(p => L.push('✔ ' + p));
+  L.push('');
+  if (f.group){
+    L.push(`${won(f.price)} → ${won(f.gp)}`);
+    if (f.dl) L.push(`${f.dl} 마감`);
+    if (f.target) L.push(progressLine(f, 'short'));
+  } else L.push(won(f.price));
+  L.push(`${f.recv}`);
+  if (S.extra) L.push('🎁 ' + S.extra);
+  L.push('');
+  L.push('참여는 프로필 링크에서 👆');
+  L.push(`📍 ${STORE.name} · ${STORE.area}`);
+  L.push('.');
+  L.push(tags(f, 'insta').join(' '));
+  return {body: L.join('\n')};
+}
+function daangn(f){
+  const L = [];
+  L.push(f.group ? pick([
+    `북면 이웃님들, ${f.name} 공동구매 해요`,
+    `동네 방앗간 ${STORE.name}이에요. ${f.name} 같이 모아요`,
+  ]) : pick([`${f.name} 있어요`, `북면 방앗간 ${STORE.name}입니다`]));
+  L.push('');
+  L.push(f.group
+    ? `여럿이 모이면 싸게 드리는 공동구매예요. 마감되면 그 주에 ${f.made} 드려요.`
+    : `방앗간에서 ${f.daily} ${f.noun}${josa(f.noun,'이에요','예요')}.`);
+  if (f.pts.length) { L.push(''); f.pts.slice(0,3).forEach(p => L.push('- ' + p)); }
+  L.push('');
+  if (f.group){
+    L.push(`가격: ${won(f.price)} → 공구가 ${won(f.gp)}`);
+    if (f.dl) L.push(`마감: ${f.dl}`);
+    if (f.target) L.push(progressLine(f, 'short'));
+  } else L.push(`가격: ${won(f.price)}`);
+  L.push(`받는 방법: ${f.recv}${f.recv !== '배송' ? ' (매장 들르시면 바로 드려요)' : ''}`);
+  if (S.extra) L.push(`혜택: ${S.extra}`);
+  L.push('');
+  L.push(`참여: ${link('daangn')}`);
+  L.push(`채팅이나 전화로 주문하셔도 돼요.`);
+  L.push('');
+  L.push(`📍 ${STORE.addr}`);
+  L.push(`📞 ${STORE.phone}`);
+  return {body: L.join('\n')};
+}
+function tags(f, ch){
+  const base = ['#골목상회', '#창원방앗간', '#북면방앗간', '#방앗간'];
+  const n = f.name;
+  const prod = [];
+  if (/참기름/.test(n)) prod.push('#참기름', '#국산참기름', '#저온압착참기름');
+  if (/들기름/.test(n)) prod.push('#들기름', '#생들기름', '#국산들기름');
+  if (/들깨/.test(n)) prod.push('#들깨가루');
+  if (/도라지/.test(n)) prod.push('#도라지배즙', '#환절기');
+  if (/고춧가루/.test(n)) prod.push('#고춧가루', '#국산고춧가루', '#김장');
+  if (/망개떡/.test(n)) prod.push('#망개떡', '#의령망개떡');
+  if (f.group) prod.push('#공동구매', '#공구');
+  if (ch === 'insta') return [...base, ...prod, '#창원맛집', '#창원주부', '#집밥', ...(f.oil ? ['#건강한기름', '#방앗간기름'] : []), '#로컬푸드', '#감계', '#창원살림'];
+  return [...base, ...prod, '#창원'];
+}
+const BUILDERS = {band, blog, insta, daangn};
+
+const TIPS = {
+  band: ['<b>사진 2~3장</b>을 먼저 올리고 글을 붙이면 반응이 좋아요. 착유 장면, 병 사진, 원료 순서를 추천해요.', '마감 하루 전에 <b>“D-1, 현재 OO병 모였어요”</b> 댓글이나 새 글을 올리면 막판 참여가 늘어요.', '링크는 밴드에서 바로 눌러서 열려요.'],
+  blog: ['<b>[사진]</b>·<b>[지도]</b> 표시된 자리에 실제 사진과 네이버 지도를 넣어 주세요. 사진이 많을수록 검색 노출에 유리해요.', '제목 앞부분에 <b>지역명+상품명</b>이 들어가 있어요. 그대로 쓰면 “창원 참기름” 같은 검색에 걸리기 쉬워요.', '태그는 글 맨 아래 태그 칸에 붙여 넣으세요.'],
+  insta: ['인스타 본문 링크는 눌러지지 않아요. <b>프로필 링크</b>를 “링크만 복사” 버튼의 주소로 바꿔 두세요.', '첫 줄이 피드에서 보이는 전부예요. 사진은 <b>정사각형, 첫 장은 기름이 흐르는 장면</b>이 좋아요.', '해시태그는 본문 끝에 넣어 두었어요. 너무 길면 첫 댓글로 옮겨도 됩니다.'],
+  daangn: ['<b>당근 비즈프로필 → 소식</b>에 올리세요. 동네 이웃에게 노출돼요.', '가격과 <b>매장 픽업</b>을 앞에 두면 동네 손님 반응이 좋아요.', '당근은 링크보다 <b>채팅 주문</b>이 많아요. 채팅으로 온 주문도 공구 사이트에 대신 넣어 두면 수량이 맞아요.'],
+};
+
+/* ---------- 화면 ---------- */
+function render(force){
+  const f = facts();
+  const out = BUILDERS[tab](f);
+  if (force || !edited){
+    $('#post').textContent = out.body;
+    $('#title').textContent = out.title || '';
+    edited = false;
+  }
+  $('#titleBox').hidden = !out.title; $('#copyTitle').hidden = !out.title;
+  const body = $('#post').innerText.replace(/\n$/, '');
+  const lim = CH[tab].limit;
+  const parts = [`글자 수 <b>${body.length.toLocaleString()}</b>${lim ? ` / ${lim.toLocaleString()}` : ''}`];
+  if (lim && body.length > lim) parts.push(`<span class="warn">${CH[tab].label} 제한을 넘었어요. 줄여 주세요.</span>`);
+  if (f.group && f.left !== null) parts.push(f.left < 0 ? '<span class="warn">마감일이 지났어요</span>' : `마감까지 <b>${f.left}일</b>`);
+  if (f.group && f.gp && f.price && f.gp >= f.price) parts.push('<span class="warn">공구가가 정가보다 높아요</span>');
+  parts.push(`<span class="url">${tab === 'insta' ? '프로필 링크: ' : ''}${link(tab)}</span>`);
+  $('#meta').innerHTML = parts.join(' · ');
+  $('#tips').innerHTML = TIPS[tab].map(t => `<li>${t}</li>`).join('');
+}
+function syncForm(){
+  $('#f-name').value = S.name || ''; $('#f-price').value = S.price || ''; $('#f-gp').value = S.gp || '';
+  $('#f-target').value = S.target || ''; $('#f-deadline').value = S.deadline || ''; $('#f-points').value = S.points || '';
+  $('#f-recv').value = S.recv || 'both'; $('#f-camp').value = S.camp || ''; $('#f-extra').value = S.extra || '';
+  $('#f-joined').value = S.joined ?? ''; $('#f-max').value = S.max || '';
+  setType(S.type || 'group', true);
+  document.querySelectorAll('#presets .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.key === S.preset)));
+  const sel = $('#prodSel'); if (!sel.disabled) sel.value = S.id && PRODUCTS.some(p => p.id === S.id) ? S.id : '';
+  renderProgress();
+}
+function renderProgress(){
+  const t = num(S.target), j = num(S.joined), m = num(S.max), el = $('#progress');
+  if (S.type !== 'group' || !t){ el.hidden = true; return; }
+  el.hidden = false;
+  const pct = Math.min(100, Math.round(j / t * 100));
+  el.innerHTML = `<span>목표 <b>${t}</b>개 중 <b>${j}</b>개 참여 (${pct}%)${m ? ` · 최대 ${m}개` : ''}</span><div class="bar"><i style="width:${pct}%"></i></div>`;
+}
+
+/* ---------- 상품 시트 (공구 사이트와 같은 SheetDB 주소, 읽기 전용) ---------- */
+const PRODUCTS_API = 'https://sheetdb.io/api/v1/oehravh1238d4';
+let PRODUCTS = [];
+function rowsToProducts(rows){
+  if (!Array.isArray(rows)) return [];
+  return rows.filter(r => r && String(r.id || '').trim() && String(r.name || '').trim()).map(r => {    const type = String(r.type || '');
+    const regular = /일반|상시|매장/.test(type) && !/공구|공동/.test(type);
+    const m = String(r.deadline || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    const deadline = m ? `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}` : '';
+    const ship = !/^(불가|x|n|no|픽업|픽업만|매장픽업)$/i.test(String(r.delivery ?? '').trim());
+    const status = String(r.status || '진행').trim();
+    const closed = status === '마감' || (deadline && new Date(deadline + 'T23:59:59+09:00') < new Date());
+    return {id:String(r.id).trim(), name:String(r.name).trim(), desc:String(r.desc||'').trim(), price:num(r.price), gp:num(r.group_price),
+            target:num(r.target_qty), max:num(r.max_qty), joined:num(r.joined_qty), deadline, regular, ship, closed};
+  });
+}
+function fromProduct(p){
+  const saved = ls.get('golmok_sns_points', {})[p.id];
+  const descPts = p.desc.split(/(?<=[.。])\s+|\n|,\s*/).map(s => s.trim()).filter(Boolean).join('\n');
+  return {id:p.id, preset:null, type:p.regular ? 'regular' : 'group', name:p.name, price:p.price || '', gp:p.gp || '',
+          target:p.target || '', joined:p.joined, max:p.max || '', deadline:p.deadline, recv:p.ship ? 'both' : 'pickup',
+          camp:p.id.toLowerCase(), points:saved ?? descPts, extra:''};
+}
+function fillSelect(){
+  const sel = $('#prodSel');
+  const opt = p => `<option value="${p.id}">${esc(p.name)}${p.regular ? ` · ${won(p.price)}` : ` · 공구가 ${won(p.gp || p.price)}${p.target ? ` · ${p.joined}/${p.target}` : ''}`}</option>`;
+  const open = PRODUCTS.filter(p => !p.regular && !p.closed), ended = PRODUCTS.filter(p => !p.regular && p.closed), reg = PRODUCTS.filter(p => p.regular);
+  sel.innerHTML = '<option value="">상품을 고르세요</option>'
+    + (open.length ? `<optgroup label="진행 중인 공동구매 (${open.length})">${open.map(opt).join('')}</optgroup>` : '')
+    + (reg.length ? `<optgroup label="일반 상품 (${reg.length})">${reg.map(opt).join('')}</optgroup>` : '')
+    + (ended.length ? `<optgroup label="마감된 공동구매">${ended.map(opt).join('')}</optgroup>` : '');
+  sel.disabled = false;
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function sheetMsg(text, bad, reload){
+  const st = $('#sheetStatus'); st.textContent = text; st.classList.toggle('bad', !!bad);
+  $('#sheetReload').hidden = !reload;
+}
+function useExamples(why){
+  $('#sheetBox').hidden = !why; $('#presetBox').hidden = false;
+  if (why) { $('#prodSel').innerHTML = '<option>상품 시트를 쓸 수 없어요</option>'; $('#prodSel').disabled = true; }
+}
+function applySheet(rows){
+  const list = rowsToProducts(rows);
+  if (!list.length){ sheetMsg('상품 시트에서 상품을 찾지 못했어요. 시트 첫 줄에 id, name 열이 있는지 확인해 주세요.', true, true); return; }
+  PRODUCTS = list; fillSelect();
+  const when = new Date();
+  sheetMsg(`상품 ${list.length}개 불러옴 · ${when.getHours()}:${String(when.getMinutes()).padStart(2,'0')} 기준`, false, true);
+  // 시트 값이 바뀐 상품이면 숫자(가격·참여 수량 등)를 최신으로 맞춤
+  const cur = S.id && PRODUCTS.find(p => p.id === S.id);
+  if (cur){
+    const fresh = fromProduct(cur);
+    ['name','price','gp','target','joined','max','deadline','type'].forEach(k => S[k] = fresh[k]);
+    save(); syncForm(); render(true);
+  } else if (!S.id && (S.preset || !ls.get('golmok_sns_draft', null))){
+    const first = PRODUCTS.find(p => !p.regular && !p.closed) || PRODUCTS[0];
+    S = fromProduct(first); save(); syncForm(); render(true);
+  } else syncForm();
+}
+async function loadSheet(manual){
+  sheetMsg('상품 시트를 불러오는 중이에요…', false, false);
+  try {
+    // 같은 상품을 5분 안에 다시 열면 저장해 둔 목록을 써서 SheetDB 요청 수를 아낌
+    const cached = ss.get('golmok_sns_products');
+    if (!manual && cached && Date.now() - cached.at < 5 * 60000) { applySheet(cached.rows); return; }
+    const res = await fetch(PRODUCTS_API, {headers:{Accept:'application/json'}});
+    if (!res.ok) throw new Error(res.status === 429 ? '오늘 SheetDB 요청 한도를 넘었어요. 내일 다시 시도하거나 SheetDB 요금제를 확인해 주세요.' : `상품 시트 응답 오류 (${res.status})`);
+    const rows = await res.json();
+    ss.set('golmok_sns_products', {at: Date.now(), rows});
+    applySheet(rows);
+  } catch (e) {
+    sheetMsg(e && e.message && !/fetch/i.test(e.message) ? e.message : '상품 시트에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 불러와 주세요.', true, true);
+    if (!PRODUCTS.length) $('#presetBox').hidden = false;
+  }
+}
+$('#sheetReload').onclick = () => loadSheet(true);
+$('#prodSel').addEventListener('change', e => {
+  const p = PRODUCTS.find(x => x.id === e.target.value); if (!p) return;
+  S = fromProduct(p); edited = false; variant = 0; save(); syncForm(); render(true);
+});
+function setType(t, silent){
+  S.type = t;
+  $('#t-group').setAttribute('aria-pressed', String(t === 'group'));
+  $('#t-regular').setAttribute('aria-pressed', String(t === 'regular'));
+  document.querySelectorAll('.fields .g').forEach(el => el.hidden = t !== 'group');
+  renderProgress();
+  if (!silent){ save(); render(true); }
+}
+function save(){ ls.set('golmok_sns_draft', S); }
+
+$('#presets').innerHTML = PRESETS.map(p => `<button type="button" class="chip" data-key="${p.key}" aria-pressed="false">${p.label}</button>`).join('') + '<span class="example">예시</span>';
+$('#presets').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (!b) return; S = fromPreset(PRESETS.find(p => p.key === b.dataset.key)); syncForm(); save(); render(true); });
+$('#t-group').onclick = () => setType('group'); $('#t-regular').onclick = () => setType('regular');
+const MAP = {'f-name':'name','f-price':'price','f-gp':'gp','f-target':'target','f-deadline':'deadline','f-points':'points','f-recv':'recv','f-camp':'camp','f-extra':'extra','f-joined':'joined','f-max':'max'};
+Object.keys(MAP).forEach(id => $('#' + id).addEventListener('input', e => {
+  S[MAP[id]] = e.target.value; S.preset = null;
+  document.querySelectorAll('#presets .chip').forEach(b => b.setAttribute('aria-pressed','false'));
+  if (id === 'f-points' && S.id){ const m = ls.get('golmok_sns_points', {}); m[S.id] = e.target.value; ls.set('golmok_sns_points', m); }
+  save(); renderProgress(); render(true);
+}));
+
+$('#tabs').innerHTML = Object.entries(CH).map(([k, c]) => `<button type="button" class="tab" role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${k === tab}" style="--c:${c.c}"><i></i>${c.label}</button>`).join('');
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; variant = 0; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === b))); ls.set('golmok_sns_tab', tab); render(true); });
+$('#post').addEventListener('input', () => { edited = true; render(false); });
+$('#title').addEventListener('input', () => { edited = true; });
+$('#regen').onclick = () => { variant++; render(true); };
+
+async function copyText(btn, text, label){
+  try { await navigator.clipboard.writeText(text); btn.textContent = '복사했어요'; btn.classList.add('done'); }
+  catch(e){ btn.textContent = '복사가 막혔어요. 글을 길게 눌러 복사하세요'; }
+  clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = label; btn.classList.remove('done'); }, 1800);
+}
+$('#copyBody').onclick = e => copyText(e.currentTarget, $('#post').innerText.replace(/\n$/, ''), '본문 복사');
+$('#copyTitle').onclick = e => copyText(e.currentTarget, $('#title').innerText.trim(), '제목 복사');
+$('#copyLink').onclick = e => copyText(e.currentTarget, link(tab), '링크만 복사');
+
+S = ls.get('golmok_sns_draft', null) || fromPreset(PRESETS[0]);
+const savedTab = ls.get('golmok_sns_tab', 'band'); if (CH[savedTab]) { tab = savedTab; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === tab))); }
+syncForm(); render(true);
+
+loadSheet(false);
+</script>
+</body>
+</html>
