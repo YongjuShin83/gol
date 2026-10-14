@@ -541,7 +541,7 @@ syncForm(); render(true);
 
 /* ---------- 비밀번호 ----------
    비밀번호를 바꾸려면: 새 비밀번호 앞에 'golmok-sns:'를 붙인 문자열의 SHA-256 값을 PW_HASH에 넣으세요. */
-const PW_HASH = '6ee29e5624ec653a26cc0a837edb71749a3ed31330c4b6d90c920292fcb51f78';
+const PW_HASH = 'f1a360c70c4a862900c11cef5ebb9794a6588e1662b5e24376b3ccf0603ca1c2';
 const UNLOCK_KEY = 'golmok_sns_unlock';
 async function sha256(t){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
