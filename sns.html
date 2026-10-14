@@ -951,7 +951,7 @@ $('#copyBody').onclick = e => copyText(e.currentTarget, $('#post').innerText.rep
 $('#copyTitle').onclick = e => copyText(e.currentTarget, $('#title').innerText.trim(), '제목 복사');
 $('#copyLink').onclick = e => copyText(e.currentTarget, currentLink(tab), '링크만 복사');
 
-  /* ---------- 발행 대기열 ----------
+/* ---------- 발행 대기열 ----------
    채널마다 '이 글로 확정'을 누르면 그 순간의 글을 저장해 두고, '발행'을 누르면 확정한 글을
    발행 대기열 시트로 보냄. 실제 게시는 Claude가 대기열을 읽어 밴드·당근에 올림. */
 let PUB = ls.get('golmok_sns_pub', {});
@@ -969,7 +969,7 @@ function renderPub(){
     el.textContent = p ? (stale ? '변경됨' : '✓') : ''; el.classList.toggle('stale', stale);
   });
   const p = PUB[tab], btn = $('#confirmCh');
-  btn.textContent = !p ? '이 글로 확정' : same(p, cur) ? '확정 취소' : '바뀜 글로 다시 확정';
+  btn.textContent = !p ? '이 글로 확정' : same(p, cur) ? '확정 취소' : '바뀐 글로 다시 확정';
   btn.classList.toggle('done', same(p, cur));
   const list = Object.keys(CH).filter(k => PUB[k]), key = (SET.pubkey || '').trim();
   $('#pubInfo').innerHTML = list.length
@@ -1009,7 +1009,7 @@ const savedTab = ls.get('golmok_sns_tab', 'band'); if (CH[savedTab]) { tab = sav
 I = {...I, ...ls.get('golmok_sns_info', {})}; U = {...U, ...ls.get('golmok_sns_up', {})}; SET = {...SET, ...ls.get('golmok_sns_set', {})};
 syncForm(); syncOther(); renderPhotos();
 setMode(['product','info','upcoming'].includes(ls.get('golmok_sns_mode', 'product')) ? ls.get('golmok_sns_mode', 'product') : 'product');
-  showSnap();
+showSnap();
 
 /* ---------- 비밀번호 ----------
    비밀번호를 바꾸려면: 새 비밀번호 앞에 'golmok-sns:'를 붙인 문자열의 SHA-256 값을 PW_HASH에 넣으세요. */
