@@ -62,6 +62,13 @@ textarea{resize:vertical;min-height:64px;line-height:1.5}
 .tab{font:inherit;font-size:14px;font-weight:500;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:7px}
 .tab i{width:9px;height:9px;border-radius:50%;background:var(--c)}
 .tab[aria-selected="true"]{border-color:var(--c);box-shadow:inset 0 -3px 0 var(--c)}
+.tab .ok{font-style:normal;font-size:12px;font-weight:700;color:var(--ok)}
+.tab .ok.stale{color:var(--warn)}
+.pubbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;border-top:1px solid var(--line);padding-top:12px;font-size:13px;color:var(--sub)}
+.pubbar b{color:var(--ink);font-weight:500}
+.pubbar .warn{color:var(--warn)}
+.pubbar .btn{margin-left:auto}
+.btn:disabled{opacity:.45;cursor:default;filter:none}
 .preview{display:grid;gap:12px}
 .meta{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;font-size:12.5px;color:var(--sub)}
 .meta b{color:var(--ink);font-variant-numeric:tabular-nums}
@@ -234,6 +241,7 @@ details.settings .fields{margin-top:10px}
         <summary>기본 설정</summary>
         <div class="fields">
           <label class="full" for="s-kakao">카카오톡 채널 주소 (예정 상품 알림용)<input id="s-kakao" placeholder="예: https://pf.kakao.com/_xxxxx" inputmode="url"></label>
+          <label class="full" for="s-pubkey">발행 키 (발행 대기열용, 기기마다 한 번)<input id="s-pubkey" placeholder="Apps Script ‘발행키만들기’ 실행 기록에 나온 키" autocomplete="off" spellcheck="false"></label>
         </div>
       </details>
     </section>
@@ -264,8 +272,13 @@ details.settings .fields{margin-top:10px}
         <button class="btn" type="button" id="regen">다른 문장으로</button>
         <button class="btn" type="button" id="savePhotos" hidden>사진 저장</button>
         <button class="btn" type="button" id="sharePost" hidden>글+사진 앱으로 보내기</button>
+        <button class="btn" type="button" id="confirmCh">이 글로 확정</button>
       </div>
       <ul class="tips" id="tips"></ul>
+      <div class="pubbar">
+        <span id="pubInfo"></span>
+        <button class="btn primary" type="button" id="publishBtn" disabled>발행</button>
+      </div>
     </section>
   </div>
 </div>
@@ -279,6 +292,8 @@ const CH = {
   insta:  {label:'인스타', c:'var(--insta)',  src:'instagram', med:'social',    limit:2200},
   daangn: {label:'당근',   c:'var(--daangn)', src:'daangn',    med:'local',     limit:1000},
 };
+// 발행 대기열: 공구 사이트와 같은 Apps Script 웹 앱 (apps-script/publish-queue.gs)
+const PUB_URL = 'https://script.google.com/macros/s/AKfycbyLOpHpwDgtTbu5Cd71I_nEENV0X82fQaAJcIF2ZGZo026_jL7_h1GjTnCo3i87Wrzn/exec';
 const PRESETS = [
   {key:'sesame', label:'저온압착 참기름', type:'group', name:'저온압착 참기름 350ml', price:28000, gp:22000, target:30, days:5, recv:'both', camp:'sesame_oil',
    points:'국산 참깨 100%\n낮은 온도로 볶아 고소함은 살리고 탄 맛은 없앴어요\n마감 후 그 주에 짜서 보내드려요'},
@@ -486,7 +501,7 @@ const TIPS = {
 let MODE = 'product';
 let I = {kind:'tip', topic:'', points:'', prod:'', extra:''};
 let U = {from:'', name:'', when:'', price:'', group:true, points:'', notify:'kakao', extra:''};
-let SET = {kakao:''};
+let SET = {kakao:'', pubkey:''};
 const KIND = {tip:{label:'살림 정보', band:'[살림 정보]', icon:'✔'}, notice:{label:'골목상회 소식', band:'[골목상회 소식]', icon:'📌'}, story:{label:'방앗간 이야기', band:'[방앗간 이야기]', icon:'·'}};
 const lines = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
 function utm(ch, camp, hash){
@@ -761,12 +776,14 @@ $('#u-from').addEventListener('change', e => {
   ls.set('golmok_sns_up', U); syncOther(); render(true);
 });
 $('#s-kakao').addEventListener('input', e => { SET.kakao = e.target.value; ls.set('golmok_sns_set', SET); render(true); });
+$('#s-pubkey').addEventListener('input', e => { SET.pubkey = e.target.value.trim(); ls.set('golmok_sns_set', SET); renderPub(); });
 function syncOther(){
   Object.entries(IMAP).forEach(([id, k]) => { if (id !== 'i-prod') $('#' + id).value = I[k] || ''; });
   $('#i-prod').value = I.prod && PRODUCTS.some(p => p.id === I.prod) ? I.prod : '';
   Object.entries(UMAP).forEach(([id, k]) => $('#' + id).value = U[k] || (id === 'u-notify' ? 'kakao' : ''));
   $('#u-group').checked = !!U.group; $('#u-from').value = U.from && PRODUCTS.some(p => p.id === U.from) ? U.from : '';
   $('#s-kakao').value = SET.kakao || '';
+  $('#s-pubkey').value = SET.pubkey || '';
 }
 function fillOtherSelects(){
   const opt = p => `<option value="${p.id}">${esc(p.name)}</option>`;
@@ -798,6 +815,7 @@ function render(force){
   $('#meta').innerHTML = parts.join(' · ');
   $('#tips').innerHTML = [...(MODE === 'info' ? TIPS_INFO[tab] : MODE === 'upcoming' ? TIPS_UP[tab] : TIPS[tab]), ...(PHOTOS.length ? [] : ['왼쪽 아래 <b>사진</b> 칸에 사진을 올리면 이 채널 비율에 맞춰 저장하거나 앱으로 바로 보낼 수 있어요.'])].map(t => `<li>${t}</li>`).join('');
   renderStrip();
+  renderPub();
 }
 function syncForm(){
   $('#f-name').value = S.name || ''; $('#f-price').value = S.price || ''; $('#f-gp').value = S.gp || '';
@@ -918,8 +936,8 @@ Object.keys(MAP).forEach(id => $('#' + id).addEventListener('input', e => {
   save(); renderProgress(); render(true);
 }));
 
-$('#tabs').innerHTML = Object.entries(CH).map(([k, c]) => `<button type="button" class="tab" role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${k === tab}" style="--c:${c.c}"><i></i>${c.label}</button>`).join('');
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; variant = 0; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === b))); ls.set('golmok_sns_tab', tab); render(true); });
+$('#tabs').innerHTML = Object.entries(CH).map(([k, c]) => `<button type="button" class="tab" role="tab" id="tab-${k}" data-tab="${k}" aria-selected="${k === tab}" style="--c:${c.c}"><i></i>${c.label}<em class="ok" id="ok-${k}"></em></button>`).join('');
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; variant = 0; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === b))); ls.set('golmok_sns_tab', tab); render(true); showSnap(); });
 $('#post').addEventListener('input', () => { edited = true; render(false); });
 $('#title').addEventListener('input', () => { edited = true; });
 $('#regen').onclick = () => { variant++; render(true); };
@@ -933,11 +951,65 @@ $('#copyBody').onclick = e => copyText(e.currentTarget, $('#post').innerText.rep
 $('#copyTitle').onclick = e => copyText(e.currentTarget, $('#title').innerText.trim(), '제목 복사');
 $('#copyLink').onclick = e => copyText(e.currentTarget, currentLink(tab), '링크만 복사');
 
+  /* ---------- 발행 대기열 ----------
+   채널마다 '이 글로 확정'을 누르면 그 순간의 글을 저장해 두고, '발행'을 누르면 확정한 글을
+   발행 대기열 시트로 보냄. 실제 게시는 Claude가 대기열을 읽어 밴드·당근에 올림. */
+let PUB = ls.get('golmok_sns_pub', {});
+function snap(){ return {title: $('#titleBox').hidden ? '' : $('#title').innerText.trim(), body: $('#post').innerText.replace(/\n$/, ''), link: currentLink(tab)}; }
+function same(a, b){ return !!a && !!b && a.title === b.title && a.body === b.body; }
+// 확정한 채널로 돌아오면 새로 만든 글 대신 확정해 둔 글을 보여 줌
+function showSnap(){
+  const p = PUB[tab]; if (!p) return;
+  $('#post').textContent = p.body; $('#title').textContent = p.title || ''; edited = true; render(false);
+}
+function renderPub(){
+  const cur = snap();
+  Object.keys(CH).forEach(k => {
+    const el = $('#ok-' + k), p = PUB[k], stale = !!p && k === tab && !same(p, cur);
+    el.textContent = p ? (stale ? '변경됨' : '✓') : ''; el.classList.toggle('stale', stale);
+  });
+  const p = PUB[tab], btn = $('#confirmCh');
+  btn.textContent = !p ? '이 글로 확정' : same(p, cur) ? '확정 취소' : '바뀜 글로 다시 확정';
+  btn.classList.toggle('done', same(p, cur));
+  const list = Object.keys(CH).filter(k => PUB[k]), key = (SET.pubkey || '').trim();
+  $('#pubInfo').innerHTML = list.length
+    ? `확정한 채널 <b>${list.map(k => CH[k].label).join(', ')}</b>${key ? '' : ' · <span class="warn">기본 설정에 발행 키를 넣어 주세요</span>'}`
+    : '채널마다 글을 확인하고 <b>이 글로 확정</b>을 누르면, 확정한 글을 한 번에 발행해요.';
+  const pb = $('#publishBtn');
+  if (!pb._busy){ pb.disabled = !list.length || !key; pb.textContent = list.length ? `발행 (${list.length}개 채널)` : '발행'; }
+}
+$('#confirmCh').onclick = () => {
+  const cur = snap(), p = PUB[tab];
+  if (same(p, cur)) delete PUB[tab]; else PUB[tab] = {...cur, at: Date.now()};
+  ls.set('golmok_sns_pub', PUB); renderPub();
+};
+$('#publishBtn').onclick = async e => {
+  const btn = e.currentTarget, list = Object.keys(CH).filter(k => PUB[k]);
+  if (!list.length) return;
+  const over = list.filter(k => CH[k].limit && PUB[k].body.length > CH[k].limit);
+  if (over.length){ $('#pubInfo').innerHTML = `<span class="warn">${over.map(k => CH[k].label).join(', ')} 글이 글자 수 제한을 넘었어요. 줄인 뒤 다시 확정해 주세요.</span>`; return; }
+  if (!confirm(`${list.map(k => CH[k].label).join(', ')}에 확정한 글을 발행할까요?\nClaude가 발행 대기열을 읽어 차례로 올려요.`)) return;
+  btn._busy = true; btn.disabled = true; btn.textContent = '보내는 중…';
+  let msg;
+  try {
+    const posts = list.map(k => ({channel: k, title: PUB[k].title, body: PUB[k].body, link: PUB[k].link}));
+    const res = await fetch(PUB_URL, {method: 'POST', body: new URLSearchParams({pub: JSON.stringify(posts), key: (SET.pubkey || '').trim()})});
+    const t = (await res.text()).trim();
+    if (!/^OK/.test(t)) throw new Error(t === 'DENIED' ? '발행 키가 맞지 않아요. 기본 설정의 발행 키를 확인해 주세요.' : t || '대기열 응답이 비어 있어요');
+    PUB = {}; ls.set('golmok_sns_pub', PUB);
+    msg = `<b>발행 대기열에 ${list.length}개 채널을 올렸어요 (${esc(t.split(' ')[1] || '')}).</b> Claude에게 “발행 대기열 올려줘”라고 말해 주세요.`;
+  } catch(err){
+    msg = `<span class="warn">보내지 못했어요. ${esc(err && err.message && !/fetch/i.test(err.message) ? err.message : '인터넷 연결을 확인하고 다시 눌러 주세요.')}</span>`;
+  }
+  btn._busy = false; renderPub(); $('#pubInfo').innerHTML = msg;
+};
+
 S = ls.get('golmok_sns_draft', null) || fromPreset(PRESETS[0]);
 const savedTab = ls.get('golmok_sns_tab', 'band'); if (CH[savedTab]) { tab = savedTab; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === tab))); }
 I = {...I, ...ls.get('golmok_sns_info', {})}; U = {...U, ...ls.get('golmok_sns_up', {})}; SET = {...SET, ...ls.get('golmok_sns_set', {})};
 syncForm(); syncOther(); renderPhotos();
 setMode(['product','info','upcoming'].includes(ls.get('golmok_sns_mode', 'product')) ? ls.get('golmok_sns_mode', 'product') : 'product');
+  showSnap();
 
 /* ---------- 비밀번호 ----------
    비밀번호를 바꾸려면: 새 비밀번호 앞에 'golmok-sns:'를 붙인 문자열의 SHA-256 값을 PW_HASH에 넣으세요. */
