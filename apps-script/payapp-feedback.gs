@@ -33,7 +33,7 @@ function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    const sh = SpreadsheetApp.getActive().getSheetByName(PAYAPP_ORDER_SHEET);
+    const sh = SpreadsheetApp.openById(STATS_SPREADSHEET_ID).getSheetByName(PAYAPP_ORDER_SHEET);   // 주문 시트 (ID는 stats.gs)
     const col = payappColumns_(sh, ['order_no', 'order_total', 'status', 'pay_method', 'pay_no', 'paid_at']);
     const values = sh.getDataRange().getValues();
     const orderNo = String(p.var1 || '').trim();

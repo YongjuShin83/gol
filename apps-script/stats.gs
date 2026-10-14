@@ -29,7 +29,7 @@ function statsLog_(p) {
   const row = [
     Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss'),
     Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM-dd'),
-    ev, clip(p.vid, 24), clip(p.sid, 24), clip(p.item_id, 20), clip(p.item_name, 60),
+    ev, clip(p.vid, 24), clip(p.ses, 24), clip(p.item_id, 20), clip(p.item_name, 60),
     num(p.qty), num(p.value), clip(p.order_no, 30), clip(p.src, 40), clip(p.dev, 10),
   ];
   const lock = LockService.getScriptLock();
@@ -53,4 +53,9 @@ function statsLog_(p) {
 
 function statsReply_(s) {
   return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.TEXT);
+}
+
+/** 처음 한 번 실행해서 권한을 승인하는 용도 (시트 이름만 읽고 끝남) */
+function 통계권한승인() {
+  Logger.log(SpreadsheetApp.openById(STATS_SPREADSHEET_ID).getName());
 }

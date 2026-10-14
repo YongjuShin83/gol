@@ -254,7 +254,7 @@ const STATS = (() => {
   try { if (qs.get('nostat') === '1') localStorage.setItem('gol_nostat', '1'); if (qs.get('nostat') === '0') localStorage.removeItem('gol_nostat'); } catch(e){}
   const skip = (() => { try { return !!localStorage.getItem('gol_nostat'); } catch(e){ return false; } })();
   const base = {
-    vid: store(window.localStorage, 'gol_vid'), sid: store(window.sessionStorage, 'gol_sid'),
+    vid: store(window.localStorage, 'gol_vid'), ses: store(window.sessionStorage, 'gol_sid'),  // 'sid'는 구글이 예약한 이름이라 쓰면 안 됨
     src: qs.get('utm_source') || (() => { try { const h = new URL(document.referrer).hostname; return h && h !== location.hostname ? h.replace(/^www\./, '') : 'direct'; } catch(e){ return 'direct'; } })(),
     dev: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'pc',
   };
