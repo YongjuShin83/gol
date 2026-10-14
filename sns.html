@@ -89,6 +89,37 @@ body{margin:0}
 .gate label.keep{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub)}
 .gate label.keep input{width:auto}
 .lock{justify-self:end;font-size:12px}
+.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.modes button{font:inherit;font-size:13.5px;font-weight:500;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:9px 6px;cursor:pointer;display:grid;gap:1px;text-align:center}
+.modes button small{font-size:11px;color:var(--sub);font-weight:400}
+.modes button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.group{display:grid;gap:14px}
+.check{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--ink)}
+.check input{width:auto}
+.photos{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.photos-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.photos-head h3{font-size:14px;margin:0}
+.drop{border:1.5px dashed var(--line);border-radius:10px;padding:14px;text-align:center;font-size:13px;color:var(--sub);cursor:pointer;background:var(--bg)}
+.drop.over{border-color:var(--accent);color:var(--accent)}
+.drop input{display:none}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.thumb{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);display:grid}
+.thumb img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.thumb .no{position:absolute;top:4px;left:4px;font-size:11px;font-weight:700;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:0 7px}
+.thumb .ctrl{display:flex;justify-content:space-between;padding:3px}
+.thumb .ctrl button{font:inherit;font-size:12px;border:0;background:transparent;color:var(--sub);cursor:pointer;padding:2px 6px;border-radius:6px}
+.thumb .ctrl button:hover{background:var(--accent-soft);color:var(--accent)}
+details.settings{border-top:1px solid var(--line);padding-top:12px;font-size:13px}
+details.settings summary{cursor:pointer;color:var(--sub)}
+details.settings .fields{margin-top:10px}
+.strip-wrap{display:grid;gap:6px}
+.strip-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--sub)}
+.strip{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.strip figure{margin:0;flex:0 0 auto;display:grid;gap:3px}
+.strip img{height:130px;width:auto;max-width:none;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--bg)}
+.strip figcaption{font-size:11px;color:var(--sub)}
+.strip .over{opacity:.35}
+.seg.small button{font-size:12px;padding:4px 10px}
 </style>
 </head>
 <body>
@@ -106,12 +137,18 @@ body{margin:0}
   <header>
     <button class="chip lock" type="button" id="lockBtn">잠그기</button>
     <h1>골목상회 홍보글 작업대</h1>
-    <p class="lead">왼쪽에 상품 정보를 넣으면 밴드·블로그·인스타·당근에 맞는 글이 오른쪽에 바로 만들어집니다. 글은 미리보기 칸에서 직접 고칠 수 있고, 각 글에는 채널별 추적 링크가 들어가 있어 어느 게시글에서 주문이 나왔는지 통계로 볼 수 있어요.</p>
+    <p class="lead">글 종류를 고르고 내용을 넣으면 밴드·블로그·인스타·당근에 맞는 글이 바로 만들어집니다. 사진을 올리면 채널별 비율로 맞춰 저장하거나 휴대폰 앱으로 바로 보낼 수 있어요. 글은 미리보기 칸에서 직접 고칠 수 있고, 각 글에는 채널별 추적 링크가 들어가 있어 어느 게시글에서 주문이 나왔는지 통계로 볼 수 있어요.</p>
   </header>
 
   <div class="main">
     <section class="panel" aria-labelledby="h-prod">
+      <div class="modes" role="group" aria-label="글 종류">
+        <button type="button" data-mode="product" aria-pressed="true">상품 홍보<small>판매·공구 중</small></button>
+        <button type="button" data-mode="info" aria-pressed="false">정보 글<small>꿀팁·소식·이야기</small></button>
+        <button type="button" data-mode="upcoming" aria-pressed="false">예정 상품<small>곧 나올 상품</small></button>
+      </div>
       <h2 id="h-prod">상품 정보</h2>
+      <div class="group" id="modeProduct">
       <div class="sheet" id="sheetBox">
         <label for="prodSel">상품 시트에서 고르기
           <select id="prodSel" disabled><option>상품 시트 불러오는 중…</option></select>
@@ -147,11 +184,73 @@ body{margin:0}
         <label for="f-camp">공구 이름 (통계용, 영문)<input id="f-camp" autocomplete="off"></label>
         <label class="full" for="f-extra">덧붙일 말 (선택)<input id="f-extra" placeholder="예: 첫 공구라 선착순 10분께 참깨볶음 소분 드려요"></label>
       </div>
+      </div>
+
+      <div class="group" id="modeInfo" hidden>
+        <div class="fields">
+          <label class="full" for="i-kind">글 성격<select id="i-kind">
+            <option value="tip">살림·건강 정보 (보관법, 고르는 법, 활용법)</option>
+            <option value="notice">매장 소식·공지 (휴무, 영업시간, 입고)</option>
+            <option value="story">방앗간 이야기 (원료, 작업 과정, 손님 이야기)</option>
+          </select></label>
+          <label class="full" for="i-topic">주제 (제목이 돼요)<input id="i-topic" placeholder="예: 참기름 오래 두고 먹는 보관법"></label>
+          <label class="full" for="i-points">전하고 싶은 내용 (한 줄에 하나씩)<textarea id="i-points" rows="5" placeholder="예: 뚜껑을 꼭 닫아 햇빛 없는 곳에 두세요&#10;참기름은 냉장 보관하면 굳을 수 있어요&#10;들기름은 반대로 냉장 보관이 좋아요"></textarea></label>
+          <label class="full" for="i-prod">함께 소개할 상품 (선택)<select id="i-prod"><option value="">소개할 상품 없음</option></select></label>
+          <label class="full" for="i-extra">마무리 한마디 (선택)<input id="i-extra" placeholder="예: 궁금한 기름 이야기 댓글로 물어봐 주세요"></label>
+        </div>
+      </div>
+
+      <div class="group" id="modeUp" hidden>
+        <div class="fields">
+          <label class="full" for="u-from">상품 시트에서 가져오기 (선택)<select id="u-from"><option value="">직접 입력</option></select></label>
+          <label class="full" for="u-name">상품명<input id="u-name" placeholder="예: 햇참깨 국산참기름 350ml"></label>
+          <label for="u-when">나오는 시기<input id="u-when" placeholder="예: 10월 마지막 주"></label>
+          <label for="u-price">예상 가격 (선택)<input id="u-price" placeholder="예: 2만 원대 초반"></label>
+          <label class="full check" for="u-group"><input id="u-group" type="checkbox" checked>공동구매로 열 예정이에요</label>
+          <label class="full" for="u-points">기대할 점 (한 줄에 하나씩)<textarea id="u-points" rows="3" placeholder="예: 올해 수확한 국산 햇참깨로 짜요&#10;물량이 적어서 공구로만 받아요"></textarea></label>
+          <label class="full" for="u-notify">알림 받는 방법<select id="u-notify">
+            <option value="kakao">카카오톡 채널 친구 추가</option>
+            <option value="comment">댓글(당근은 채팅)로 신청</option>
+            <option value="phone">전화로 미리 예약</option>
+          </select></label>
+          <label class="full" for="u-extra">덧붙일 말 (선택)<input id="u-extra" placeholder="예: 미리 신청하신 분께는 공구가에서 1천 원 더 빼 드려요"></label>
+        </div>
+      </div>
+
+      <div class="photos">
+        <div class="photos-head">
+          <h3>사진</h3>
+          <span class="hint" id="photoCount">첫 번째 사진이 대표 사진이 돼요</span>
+        </div>
+        <label class="drop" id="drop" for="photoInput">
+          <input id="photoInput" type="file" accept="image/*" multiple>
+          사진을 눌러서 고르거나 여기로 끌어다 놓으세요
+        </label>
+        <div class="thumbs" id="thumbs"></div>
+        <p class="hint">사진은 이 화면에서만 쓰여요. 새로고침하면 다시 골라야 해요.</p>
+      </div>
+
+      <details class="settings">
+        <summary>기본 설정</summary>
+        <div class="fields">
+          <label class="full" for="s-kakao">카카오톡 채널 주소 (예정 상품 알림용)<input id="s-kakao" placeholder="예: https://pf.kakao.com/_xxxxx" inputmode="url"></label>
+        </div>
+      </details>
     </section>
 
     <section class="panel preview" aria-labelledby="h-prev">
       <h2 id="h-prev" hidden>채널별 게시글</h2>
       <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="strip-wrap" id="stripWrap" hidden>
+        <div class="strip-head">
+          <span id="stripInfo"></span>
+          <div class="seg small" role="group" aria-label="인스타 사진 비율" id="ratioSeg" hidden>
+            <button type="button" data-ratio="4:5" aria-pressed="true">세로 4:5</button>
+            <button type="button" data-ratio="1:1" aria-pressed="false">정사각 1:1</button>
+          </div>
+        </div>
+        <div class="strip" id="strip"></div>
+      </div>
       <div class="titlebox" id="titleBox" hidden>
         <span class="hint">블로그 제목</span>
         <div class="post" id="title" contenteditable="true" spellcheck="false"></div>
@@ -163,6 +262,8 @@ body{margin:0}
         <button class="btn" type="button" id="copyTitle" hidden>제목 복사</button>
         <button class="btn" type="button" id="copyLink">링크만 복사</button>
         <button class="btn" type="button" id="regen">다른 문장으로</button>
+        <button class="btn" type="button" id="savePhotos" hidden>사진 저장</button>
+        <button class="btn" type="button" id="sharePost" hidden>글+사진 앱으로 보내기</button>
       </div>
       <ul class="tips" id="tips"></ul>
     </section>
@@ -242,7 +343,7 @@ function band(f){
   L.push('');
   L.push(f.group ? pick([
     `안녕하세요, ${STORE.name}입니다.\n이번에 ${f.name} 공동구매를 엽니다.\n목표 수량이 모이면 확정되고, 마감 후 한 번에 ${f.made} 보내드려요.`,
-    `방앗간 ${STORE.name}이에요.\n여럿이 모이면 더 싸지는 공동구매, 이번엔 ${f.name}입니다.\n미리 수량을 모아서 짜기 때문에 가장 신선한 상태로 받으실 수 있어요.`,
+    `방앗간 ${STORE.name}예요.\n여럿이 모이면 더 싸지는 공동구매, 이번엔 ${f.name}입니다.\n미리 수량을 모아서 짜기 때문에 가장 신선한 상태로 받으실 수 있어요.`,
   ]) : `안녕하세요, ${STORE.name}입니다.\n${f.name} 주문 받습니다.`);
   L.push('');
   if (f.pts.length){ L.push(`✔ 이런 ${f.noun}${josa(f.noun,'이에요','예요')}`); f.pts.forEach(p => L.push('· ' + p)); L.push(''); }
@@ -268,7 +369,7 @@ function blog(f){
   const L = [];
   L.push(pick([
     `안녕하세요, 창원 북면에서 방앗간을 하는 ${STORE.name}입니다.`,
-    `안녕하세요. 동네 방앗간 ${STORE.name}이에요.`,
+    `안녕하세요. 동네 방앗간 ${STORE.name}예요.`,
   ]));
   L.push('');
   L.push(f.group
@@ -278,7 +379,7 @@ function blog(f){
   L.push(`■ 왜 이 ${f.noun}인가요`);
   if (f.pts.length) f.pts.forEach(p => L.push(`- ${p}`)); else L.push('- (자랑할 점을 왼쪽에 적어주세요)');
   L.push('');
-  L.push('[사진: 참깨·들깨 원료 또는 착유하는 모습]');
+  L.push(photoMark('[사진: 원료나 작업하는 모습]'));
   L.push('');
   L.push(`■ ${f.group ? '공동구매' : '주문'} 안내`);
   L.push(`- 상품: ${f.name}`);
@@ -335,7 +436,7 @@ function daangn(f){
   const L = [];
   L.push(f.group ? pick([
     `북면 이웃님들, ${f.name} 공동구매 해요`,
-    `동네 방앗간 ${STORE.name}이에요. ${f.name} 같이 모아요`,
+    `동네 방앗간 ${STORE.name}예요. ${f.name} 같이 모아요`,
   ]) : pick([`${f.name} 있어요`, `북면 방앗간 ${STORE.name}입니다`]));
   L.push('');
   L.push(f.group
@@ -381,10 +482,305 @@ const TIPS = {
   daangn: ['<b>당근 비즈프로필 → 소식</b>에 올리세요. 동네 이웃에게 노출돼요.', '가격과 <b>매장 픽업</b>을 앞에 두면 동네 손님 반응이 좋아요.', '당근은 링크보다 <b>채팅 주문</b>이 많아요. 채팅으로 온 주문도 공구 사이트에 대신 넣어 두면 수량이 맞아요.'],
 };
 
+/* ---------- 글 종류: 정보 글 · 예정 상품 ---------- */
+let MODE = 'product';
+let I = {kind:'tip', topic:'', points:'', prod:'', extra:''};
+let U = {from:'', name:'', when:'', price:'', group:true, points:'', notify:'kakao', extra:''};
+let SET = {kakao:''};
+const KIND = {tip:{label:'살림 정보', band:'[살림 정보]', icon:'✔'}, notice:{label:'골목상회 소식', band:'[골목상회 소식]', icon:'📌'}, story:{label:'방앗간 이야기', band:'[방앗간 이야기]', icon:'·'}};
+const lines = t => String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
+function utm(ch, camp, hash){
+  const c = CH[ch];
+  return BASE + '?utm_source=' + c.src + '&utm_medium=' + c.med + '&utm_campaign=' + camp + (hash ? '#p-' + encodeURIComponent(hash) : '');
+}
+function currentLink(ch){
+  if (MODE === 'info') return utm(ch, 'info_' + I.kind, I.prod || '');
+  if (MODE === 'upcoming') return utm(ch, 'upcoming', '');
+  return link(ch);
+}
+function photoMark(def){ return PHOTOS.length ? `[사진 ${PHOTOS.length}장 넣기]` : def; }
+
+function infoFacts(){
+  const prod = I.prod ? PRODUCTS.find(p => p.id === I.prod) : null;
+  return {kind:I.kind, k:KIND[I.kind], topic:I.topic.trim() || '(주제를 적어주세요)', pts:lines(I.points), prod, extra:I.extra.trim()};
+}
+function prodMention(f, ch){
+  if (!f.prod) return '';
+  const p = f.prod, group = !p.regular && !p.closed;
+  const price = group && p.gp ? `공구가 ${won(p.gp)}` : won(p.price);
+  if (ch === 'insta') return `오늘 이야기한 ${p.name}, 지금 ${group ? '공동구매 중' : '판매 중'}이에요 (${price}) · 프로필 링크에서 👆`;
+  return `오늘 이야기한 ${p.name}${josa(p.name,'은','는')} 지금 ${group ? '공동구매 중' : '판매 중'}이에요 (${price}).`;
+}
+function infoTags(f, ch){
+  const base = ['#골목상회', '#창원방앗간', '#북면방앗간', '#방앗간'];
+  const byKind = {tip:['#살림팁', '#살림정보', '#주방꿀팁'], notice:['#매장소식', '#창원북면'], story:['#방앗간이야기', '#로컬푸드']}[f.kind];
+  const t = f.topic + ' ' + (f.prod ? f.prod.name : '');
+  const extra = [];
+  if (/참기름/.test(t)) extra.push('#참기름'); if (/들기름/.test(t)) extra.push('#들기름');
+  if (/보관/.test(t)) extra.push('#보관법'); if (/고춧가루/.test(t)) extra.push('#고춧가루');
+  if (/도라지|배즙/.test(t)) extra.push('#도라지배즙'); if (/김장/.test(t)) extra.push('#김장');
+  return ch === 'insta' ? [...base, ...byKind, ...extra, '#창원주부', '#집밥', '#창원살림', '#감계'] : [...base, ...byKind, ...extra, '#창원'];
+}
+const INFO = {
+  band(f){
+    const L = [`${f.k.band} ${f.topic}`, ''];
+    L.push(pick([`안녕하세요, ${STORE.name}입니다.`, `방앗간 ${STORE.name}예요.`]));
+    if (f.kind === 'tip') L.push(pick(['손님들이 자주 물어보시는 내용이라 정리해 봤어요.', '알아 두면 쓸모 있는 이야기 하나 전해드려요.']));
+    if (f.kind === 'notice') L.push('매장 소식 전해드려요.');
+    L.push('');
+    if (f.pts.length) f.pts.forEach(x => L.push(f.kind === 'story' ? x : `${f.k.icon} ${x}`)); else L.push('(전하고 싶은 내용을 왼쪽에 적어주세요)');
+    if (f.prod){ L.push(''); L.push(prodMention(f, 'band')); L.push(currentLink('band')); }
+    L.push('');
+    L.push(f.extra || pick(['궁금한 건 댓글로 남겨주세요!', '도움이 되셨다면 좋아요 한 번 눌러주세요 😊']));
+    if (f.kind === 'notice') L.push(`📞 ${STORE.phone}`);
+    return {body: L.join('\n')};
+  },
+  blog(f){
+    const title = {tip:pick([`${f.topic} | 창원 방앗간 ${STORE.name}가 알려드려요`, `방앗간 사장이 알려주는 ${f.topic}`]),
+                   notice:`[${STORE.name} 소식] ${f.topic}`,
+                   story:pick([`${f.topic} — 창원 북면 방앗간 이야기`, `${f.topic} | ${STORE.name}`])}[f.kind];
+    const L = [pick([`안녕하세요, 창원 북면에서 방앗간을 하는 ${STORE.name}입니다.`, `안녕하세요. 동네 방앗간 ${STORE.name}예요.`]), ''];
+    L.push({tip:`오늘은 "${f.topic}"에 대해 이야기해 보려고 해요. 매장에서 손님들이 자주 물어보시는 내용이에요.`,
+            notice:`${STORE.name} 소식 전해드려요.`,
+            story:`오늘은 방앗간에서 있었던 이야기를 들려드릴게요.`}[f.kind]);
+    L.push(''); L.push(photoMark('[사진: 주제와 어울리는 사진]')); L.push('');
+    if (f.pts.length){
+      if (f.kind === 'tip') f.pts.forEach((x, i) => { L.push(`■ ${i + 1}. ${x}`); L.push('(여기에 자세한 설명을 덧붙여 주세요)'); L.push(''); });
+      else { f.pts.forEach(x => L.push(f.kind === 'notice' ? `- ${x}` : x)); L.push(''); }
+    } else { L.push('(전하고 싶은 내용을 왼쪽에 적어주세요)'); L.push(''); }
+    if (f.prod){ L.push(`■ 함께 보면 좋은 상품`); L.push(prodMention(f, 'blog')); L.push(`▶ 자세히 보기: ${currentLink('blog')}`); L.push(''); }
+    L.push('■ 매장 위치'); L.push(STORE.addr); L.push(`문의 ${STORE.phone}`); L.push('[지도 첨부: 네이버 지도에서 골목상회 검색 후 삽입]'); L.push('');
+    L.push(f.extra || pick(['궁금한 점은 댓글로 편하게 물어보세요. 감사합니다.', '읽어주셔서 감사합니다.']));
+    L.push(''); L.push(infoTags(f, 'blog').join(' '));
+    return {title, body: L.join('\n')};
+  },
+  insta(f){
+    const L = [f.kind === 'tip' ? `${f.topic} 📝` : f.kind === 'notice' ? `📢 ${f.topic}` : `${f.topic} 🌾`, ''];
+    if (f.pts.length) f.pts.slice(0, 6).forEach(x => L.push(f.kind === 'story' ? x : `${f.k.icon} ${x}`));
+    if (f.prod){ L.push(''); L.push(prodMention(f, 'insta')); }
+    L.push(''); L.push(f.extra || (f.kind === 'tip' ? '저장해 두고 필요할 때 꺼내 보세요 📌' : '궁금한 건 댓글로 남겨주세요'));
+    L.push(`📍 ${STORE.name} · ${STORE.area}`); L.push('.'); L.push(infoTags(f, 'insta').join(' '));
+    return {body: L.join('\n')};
+  },
+  daangn(f){
+    const L = [f.kind === 'notice' ? `[알림] ${f.topic}` : f.topic, ''];
+    L.push(pick([`북면 이웃님들, 동네 방앗간 ${STORE.name}예요.`, `안녕하세요, 북면 방앗간 ${STORE.name}입니다.`])); L.push('');
+    if (f.pts.length) f.pts.forEach(x => L.push(f.kind === 'story' ? x : `- ${x}`));
+    if (f.prod){ L.push(''); L.push(prodMention(f, 'daangn')); L.push(currentLink('daangn')); }
+    L.push(''); if (f.extra) { L.push(f.extra); L.push(''); }
+    L.push(`📍 ${STORE.addr}`); L.push(`📞 ${STORE.phone}`);
+    return {body: L.join('\n')};
+  },
+};
+
+function upFacts(){
+  const name = U.name.trim() || '(상품명을 적어주세요)';
+  return {name, when:U.when.trim(), price:U.price.trim(), group:!!U.group, pts:lines(U.points), notify:U.notify, extra:U.extra.trim(), ...kindOf(name)};
+}
+function notifyLines(f, ch){
+  const kakao = SET.kakao.trim();
+  if (f.notify === 'kakao') {
+    if (ch === 'insta') return ['🔔 카카오톡 채널 "골목상회" 친구 추가하면 열리는 날 바로 알려드려요'];
+    return ['🔔 열리는 날 가장 먼저 알려드릴게요', kakao ? `카카오톡 채널 친구 추가: ${kakao}` : '카카오톡에서 "골목상회" 채널을 찾아 친구 추가해 주세요'];
+  }
+  if (f.notify === 'comment') {
+    if (ch === 'daangn') return ['🔔 받고 싶으신 분은 채팅으로 "알림"이라고 보내주세요. 열리면 가장 먼저 연락드릴게요'];
+    return ['🔔 받고 싶으신 분은 댓글로 "알림"이라고 남겨주세요. 열리면 가장 먼저 알려드릴게요'];
+  }
+  return [`🔔 미리 예약은 전화로 받아요 📞 ${STORE.phone}`];
+}
+function upTags(f, ch){
+  const t = tags({name:f.name, group:f.group, oil:f.oil}, ch).filter(x => !['#공동구매','#공구'].includes(x));
+  return [...t.slice(0, 4), '#신상품', '#출시예정', ...(f.group ? ['#공구예정'] : []), ...t.slice(4)];
+}
+const UP = {
+  band(f){
+    const L = [pick([`[곧 나와요] ${f.name}`, `🌱 ${f.name} 준비하고 있어요`]), ''];
+    L.push(`안녕하세요, ${STORE.name}입니다.`);
+    L.push(`${f.when ? f.when + '에 ' : '곧 '}${f.name}${josa(f.name,'을','를')} ${f.group ? '공동구매로 열 예정이에요' : '선보일 예정이에요'}.`);
+    if (f.pts.length){ L.push(''); L.push('✔ 기대해 주세요'); f.pts.forEach(x => L.push('· ' + x)); }
+    if (f.price){ L.push(''); L.push(`💰 예상 가격: ${f.price}`); }
+    if (f.extra){ L.push(''); L.push('🎁 ' + f.extra); }
+    L.push(''); notifyLines(f, 'band').forEach(x => L.push(x));
+    L.push(''); L.push('지금 진행 중인 공구도 구경해 보세요 👇'); L.push(currentLink('band'));
+    return {body: L.join('\n')};
+  },
+  blog(f){
+    const title = `${f.name} ${f.group ? '공동구매' : '출시'} 예정 안내${f.when ? ` (${f.when})` : ''} | 창원 방앗간 ${STORE.name}`;
+    const L = [`안녕하세요, 창원 북면 방앗간 ${STORE.name}입니다.`, ''];
+    L.push(`${f.when ? f.when + '에 ' : '곧 '}${f.name}${josa(f.name,'을','를')} ${f.group ? '공동구매로 열 예정이라' : '새로 선보일 예정이라'} 미리 소식 전해드려요.`);
+    L.push(''); L.push(photoMark('[사진: 원료나 준비하는 모습]')); L.push('');
+    L.push(`■ 어떤 ${f.noun}인가요`); if (f.pts.length) f.pts.forEach(x => L.push('- ' + x)); else L.push('- (기대할 점을 왼쪽에 적어주세요)');
+    L.push(''); L.push('■ 예정 안내'); L.push(`- 상품: ${f.name}`); if (f.when) L.push(`- 시기: ${f.when}`); if (f.price) L.push(`- 예상 가격: ${f.price}`);
+    L.push(`- 판매 방식: ${f.group ? '공동구매 (목표 수량이 모이면 확정)' : '일반 판매'}`); if (f.extra) L.push(`- 혜택: ${f.extra}`);
+    L.push(''); L.push('■ 알림 받는 법'); notifyLines(f, 'blog').forEach(x => L.push(x.replace(/^🔔\s*/, '')));
+    L.push(''); L.push(`▶ 지금 진행 중인 공구 보기: ${currentLink('blog')}`);
+    L.push(''); L.push('■ 매장 위치'); L.push(STORE.addr); L.push(`문의 ${STORE.phone}`); L.push('');
+    L.push('열리면 다시 소식 전해드릴게요. 감사합니다.'); L.push(''); L.push(upTags(f, 'blog').join(' '));
+    return {title, body: L.join('\n')};
+  },
+  insta(f){
+    const L = [pick([`곧 만나요, ${f.name} 🌱`, `준비 중: ${f.name}`]), ''];
+    if (f.when) L.push(`📅 ${f.when} ${f.group ? '공동구매 오픈 예정' : '출시 예정'}`);
+    if (f.pts.length) f.pts.slice(0, 3).forEach(x => L.push('✔ ' + x));
+    if (f.price) L.push(`💰 예상 ${f.price}`);
+    if (f.extra) L.push('🎁 ' + f.extra);
+    L.push(''); notifyLines(f, 'insta').forEach(x => L.push(x));
+    L.push(`📍 ${STORE.name} · ${STORE.area}`); L.push('.'); L.push(upTags(f, 'insta').join(' '));
+    return {body: L.join('\n')};
+  },
+  daangn(f){
+    const L = [`북면 이웃님들, ${f.name} 곧 나와요`, ''];
+    L.push(`동네 방앗간 ${STORE.name}예요. ${f.when ? f.when + '에 ' : '곧 '}${f.group ? '공동구매로 열 예정이에요' : '판매 시작해요'}.`);
+    if (f.pts.length){ L.push(''); f.pts.slice(0, 3).forEach(x => L.push('- ' + x)); }
+    if (f.price) { L.push(''); L.push(`예상 가격: ${f.price}`); }
+    if (f.extra) L.push(`혜택: ${f.extra}`);
+    L.push(''); notifyLines(f, 'daangn').forEach(x => L.push(x));
+    L.push(''); L.push(`📍 ${STORE.addr}`); L.push(`📞 ${STORE.phone}`);
+    return {body: L.join('\n')};
+  },
+};
+const TIPS_INFO = {
+  band: ['정보 글은 <b>사진 1장 + 짧은 목록</b>이 가장 잘 읽혀요.', '끝에 상품을 한 줄만 소개하면 광고 느낌 없이 자연스러워요.'],
+  blog: ['살림 정보 글은 <b>검색으로 오래 들어오는 글</b>이에요. 각 항목 아래에 두세 줄씩 설명을 덧붙여 주세요.', '제목에 “보관법”, “고르는 법”처럼 사람들이 검색하는 말을 넣으면 좋아요.', '태그는 글 맨 아래 태그 칸에 붙여 넣으세요.'],
+  insta: ['꿀팁 글은 <b>저장</b>이 많이 돼요. 사진에 글자를 크게 넣은 카드 형식이 잘 통해요.', '사진은 4:5 세로 비율이 피드에서 가장 크게 보여요.'],
+  daangn: ['휴무·영업시간 같은 공지는 당근 소식에 꼭 올려 두세요. 동네 손님이 가장 많이 보는 곳이에요.'],
+};
+const TIPS_UP = {
+  band: ['예정 글은 <b>열기 3~5일 전</b>에 올리고, 열리는 날 같은 글에 댓글로 “오픈했어요”를 남기면 알림이 다시 가요.'],
+  blog: ['출시 예정 글을 먼저 올려 두고, 열리면 상품 홍보 글로 이어서 쓰면 검색에 함께 걸려요.'],
+  insta: ['예정 글은 <b>스토리</b>로도 한 번 더 올리면 좋아요.', '사진은 원료나 작업 준비 모습처럼 “곧 나온다”는 느낌이 나는 게 좋아요.'],
+  daangn: ['당근은 채팅으로 미리 신청을 받기 좋아요. 신청한 분 목록을 따로 적어 두세요.'],
+};
+
+/* ---------- 사진 ---------- */
+const PHOTOS = [];
+const MAXN = {band:100, blog:50, insta:10, daangn:10};
+let INSTA_RATIO = ls.get('golmok_sns_ratio', '4:5');
+function ratioOf(ch){ return ch === 'insta' ? (INSTA_RATIO === '1:1' ? 1 : 4/5) : null; }
+async function addFiles(files){
+  const list = [...files].filter(f => f.type.startsWith('image/'));
+  for (const file of list){
+    const url = URL.createObjectURL(file);
+    const img = new Image(); img.src = url;
+    try { await img.decode(); } catch(e) { URL.revokeObjectURL(url); continue; }
+    PHOTOS.push({id: Math.random().toString(36).slice(2), name: file.name, url, img, w: img.naturalWidth, h: img.naturalHeight});
+  }
+  renderPhotos(); render(false);
+}
+function renderPhotos(){
+  $('#thumbs').innerHTML = PHOTOS.map((p, i) => `<div class="thumb"><img src="${p.url}" alt="사진 ${i + 1}"><span class="no">${i === 0 ? '대표' : i + 1}</span>
+    <div class="ctrl"><button type="button" data-move="-1" data-i="${i}" aria-label="앞으로" ${i === 0 ? 'disabled' : ''}>◀</button><button type="button" data-del="${i}" aria-label="빼기">✕</button><button type="button" data-move="1" data-i="${i}" aria-label="뒤로" ${i === PHOTOS.length - 1 ? 'disabled' : ''}>▶</button></div></div>`).join('');
+  $('#photoCount').textContent = PHOTOS.length ? `${PHOTOS.length}장 · 첫 번째가 대표 사진` : '첫 번째 사진이 대표 사진이 돼요';
+}
+function renderStrip(){
+  const has = PHOTOS.length > 0, r = ratioOf(tab), max = MAXN[tab];
+  $('#stripWrap').hidden = !has; $('#savePhotos').hidden = !has;
+  $('#sharePost').hidden = !(has ? canShareFiles() : canShareText());
+  $('#sharePost').textContent = has ? '글+사진 앱으로 보내기' : '글 앱으로 보내기';
+  $('#ratioSeg').hidden = tab !== 'insta';
+  document.querySelectorAll('#ratioSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ratio === INSTA_RATIO)));
+  if (!has) return;
+  const over = PHOTOS.length > max;
+  $('#stripInfo').innerHTML = `${CH[tab].label}에 올릴 사진 <b>${Math.min(PHOTOS.length, max)}장</b>${r ? ` · ${INSTA_RATIO} 비율로 가운데를 잘라요` : ' · 원본 비율 그대로'}${over ? ` · <span class="warn" style="color:var(--warn)">${CH[tab].label}는 최대 ${max}장이라 ${max + 1}번째부터는 빠져요</span>` : ''}`;
+  $('#strip').innerHTML = PHOTOS.map((p, i) => `<figure class="${i >= max ? 'over' : ''}"><img src="${p.url}" alt="" style="aspect-ratio:${r ? (r === 1 ? '1' : '4/5') : (p.w + '/' + p.h)}"><figcaption>${i === 0 ? '대표' : i + 1 + '번'}</figcaption></figure>`).join('');
+}
+function exportBlob(p, ch){
+  const r = ratioOf(ch);
+  let sx = 0, sy = 0, sw = p.w, sh = p.h;
+  if (r){ if (p.w / p.h > r){ sw = Math.round(p.h * r); sx = Math.round((p.w - sw) / 2); } else { sh = Math.round(p.w / r); sy = Math.round((p.h - sh) / 2); } }
+  const longMax = ch === 'insta' ? 1350 : 1600;
+  const scale = Math.min(1, longMax / Math.max(sw, sh));
+  const cv = document.createElement('canvas'); cv.width = Math.round(sw * scale); cv.height = Math.round(sh * scale);
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height);
+  g.drawImage(p.img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+  return new Promise(res => cv.toBlob(b => res(b), 'image/jpeg', 0.9));
+}
+async function exportFiles(ch){
+  const out = [], list = PHOTOS.slice(0, MAXN[ch]);
+  for (let i = 0; i < list.length; i++){
+    const b = await exportBlob(list[i], ch);
+    out.push(new File([b], `golmok_${ch}_${String(i + 1).padStart(2, '0')}.jpg`, {type: 'image/jpeg'}));
+  }
+  return out;
+}
+function canShareFiles(){ try { return !!(navigator.canShare && navigator.canShare({files: [new File([''], 'a.jpg', {type: 'image/jpeg'})]})); } catch(e) { return false; } }
+function canShareText(){ return !!navigator.share; }
+$('#photoInput').addEventListener('change', e => { addFiles(e.target.files); e.target.value = ''; });
+const drop = $('#drop');
+['dragenter','dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+$('#thumbs').addEventListener('click', e => {
+  const mv = e.target.closest('[data-move]'), del = e.target.closest('[data-del]');
+  if (mv){ const i = +mv.dataset.i, j = i + +mv.dataset.move; if (j < 0 || j >= PHOTOS.length) return; [PHOTOS[i], PHOTOS[j]] = [PHOTOS[j], PHOTOS[i]]; }
+  if (del){ const [p] = PHOTOS.splice(+del.dataset.del, 1); if (p) URL.revokeObjectURL(p.url); }
+  if (mv || del){ renderPhotos(); render(false); }
+});
+$('#ratioSeg').addEventListener('click', e => { const b = e.target.closest('[data-ratio]'); if (!b) return; INSTA_RATIO = b.dataset.ratio; ls.set('golmok_sns_ratio', INSTA_RATIO); renderStrip(); });
+$('#savePhotos').onclick = async e => {
+  const btn = e.currentTarget; btn.disabled = true; btn.textContent = '사진 만드는 중…';
+  try {
+    const files = await exportFiles(tab);
+    for (const f of files){
+      const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000); await new Promise(r => setTimeout(r, 350));
+    }
+    btn.textContent = `${files.length}장 저장했어요`;
+  } catch(err) { btn.textContent = '저장하지 못했어요'; }
+  setTimeout(() => { btn.textContent = '사진 저장'; btn.disabled = false; }, 2200);
+};
+$('#sharePost').onclick = async e => {
+  const btn = e.currentTarget, text = $('#post').innerText.replace(/\n$/, '');
+  try { await navigator.clipboard.writeText(text); } catch(err) {}
+  try {
+    const data = {text};
+    if (PHOTOS.length && canShareFiles()) data.files = await exportFiles(tab);
+    await navigator.share(data);
+  } catch(err) { if (err && err.name !== 'AbortError') { btn.textContent = '보내지 못했어요. 사진 저장을 써 주세요'; setTimeout(() => btn.textContent = PHOTOS.length ? '글+사진 앱으로 보내기' : '글 앱으로 보내기', 2500); } }
+};
+
+/* ---------- 글 종류 전환 · 입력 ---------- */
+const MODE_TITLE = {product:'상품 정보', info:'정보 글 내용', upcoming:'예정 상품 정보'};
+function setMode(m){
+  MODE = m; ls.set('golmok_sns_mode', m);
+  document.querySelectorAll('.modes [data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  $('#modeProduct').hidden = m !== 'product'; $('#modeInfo').hidden = m !== 'info'; $('#modeUp').hidden = m !== 'upcoming';
+  $('#h-prod').textContent = MODE_TITLE[m];
+  edited = false; variant = 0; render(true);
+}
+document.querySelector('.modes').addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+const IMAP = {'i-kind':'kind','i-topic':'topic','i-points':'points','i-prod':'prod','i-extra':'extra'};
+Object.keys(IMAP).forEach(id => $('#' + id).addEventListener('input', e => { I[IMAP[id]] = e.target.value; ls.set('golmok_sns_info', I); render(true); }));
+const UMAP = {'u-name':'name','u-when':'when','u-price':'price','u-points':'points','u-notify':'notify','u-extra':'extra'};
+Object.keys(UMAP).forEach(id => $('#' + id).addEventListener('input', e => { U[UMAP[id]] = e.target.value; ls.set('golmok_sns_up', U); render(true); }));
+$('#u-group').addEventListener('change', e => { U.group = e.target.checked; ls.set('golmok_sns_up', U); render(true); });
+$('#u-from').addEventListener('change', e => {
+  const p = PRODUCTS.find(x => x.id === e.target.value); U.from = e.target.value;
+  if (p){ U.name = p.name; U.points = p.desc.split(/(?<=[.。])\s+|\n|,\s*/).map(x => x.trim()).filter(Boolean).join('\n'); U.price = p.gp ? `공구가 ${won(p.gp)} 예정` : (p.price ? `${won(p.price)} 예정` : ''); U.group = !p.regular; }
+  ls.set('golmok_sns_up', U); syncOther(); render(true);
+});
+$('#s-kakao').addEventListener('input', e => { SET.kakao = e.target.value; ls.set('golmok_sns_set', SET); render(true); });
+function syncOther(){
+  Object.entries(IMAP).forEach(([id, k]) => { if (id !== 'i-prod') $('#' + id).value = I[k] || ''; });
+  $('#i-prod').value = I.prod && PRODUCTS.some(p => p.id === I.prod) ? I.prod : '';
+  Object.entries(UMAP).forEach(([id, k]) => $('#' + id).value = U[k] || (id === 'u-notify' ? 'kakao' : ''));
+  $('#u-group').checked = !!U.group; $('#u-from').value = U.from && PRODUCTS.some(p => p.id === U.from) ? U.from : '';
+  $('#s-kakao').value = SET.kakao || '';
+}
+function fillOtherSelects(){
+  const opt = p => `<option value="${p.id}">${esc(p.name)}</option>`;
+  const open = PRODUCTS.filter(p => !p.regular && !p.closed), reg = PRODUCTS.filter(p => p.regular), ended = PRODUCTS.filter(p => !p.regular && p.closed);
+  const groups = (open.length ? `<optgroup label="진행 중인 공동구매">${open.map(opt).join('')}</optgroup>` : '') + (reg.length ? `<optgroup label="일반 상품">${reg.map(opt).join('')}</optgroup>` : '') + (ended.length ? `<optgroup label="마감된 공동구매">${ended.map(opt).join('')}</optgroup>` : '');
+  $('#i-prod').innerHTML = '<option value="">소개할 상품 없음</option>' + groups;
+  $('#u-from').innerHTML = '<option value="">직접 입력</option>' + groups;
+  syncOther();
+}
+
 /* ---------- 화면 ---------- */
 function render(force){
-  const f = facts();
-  const out = BUILDERS[tab](f);
+  const f = MODE === 'info' ? infoFacts() : MODE === 'upcoming' ? upFacts() : facts();
+  const out = (MODE === 'info' ? INFO : MODE === 'upcoming' ? UP : BUILDERS)[tab](f);
   if (force || !edited){
     $('#post').textContent = out.body;
     $('#title').textContent = out.title || '';
@@ -395,11 +791,13 @@ function render(force){
   const lim = CH[tab].limit;
   const parts = [`글자 수 <b>${body.length.toLocaleString()}</b>${lim ? ` / ${lim.toLocaleString()}` : ''}`];
   if (lim && body.length > lim) parts.push(`<span class="warn">${CH[tab].label} 제한을 넘었어요. 줄여 주세요.</span>`);
-  if (f.group && f.left !== null) parts.push(f.left < 0 ? '<span class="warn">마감일이 지났어요</span>' : `마감까지 <b>${f.left}일</b>`);
-  if (f.group && f.gp && f.price && f.gp >= f.price) parts.push('<span class="warn">공구가가 정가보다 높아요</span>');
-  parts.push(`<span class="url">${tab === 'insta' ? '프로필 링크: ' : ''}${link(tab)}</span>`);
+  if (MODE === 'product' && f.group && f.left !== null) parts.push(f.left < 0 ? '<span class="warn">마감일이 지났어요</span>' : `마감까지 <b>${f.left}일</b>`);
+  if (MODE === 'product' && f.group && f.gp && f.price && f.gp >= f.price) parts.push('<span class="warn">공구가가 정가보다 높아요</span>');
+  if (MODE === 'upcoming' && U.notify === 'kakao' && !SET.kakao.trim() && tab !== 'insta') parts.push('<span class="warn">아래 ‘기본 설정’에 카톡 채널 주소를 넣으면 글에 링크가 들어가요</span>');
+  if (!(MODE === 'info' && !I.prod)) parts.push(`<span class="url">${tab === 'insta' ? '프로필 링크: ' : ''}${currentLink(tab)}</span>`);
   $('#meta').innerHTML = parts.join(' · ');
-  $('#tips').innerHTML = TIPS[tab].map(t => `<li>${t}</li>`).join('');
+  $('#tips').innerHTML = [...(MODE === 'info' ? TIPS_INFO[tab] : MODE === 'upcoming' ? TIPS_UP[tab] : TIPS[tab]), ...(PHOTOS.length ? [] : ['왼쪽 아래 <b>사진</b> 칸에 사진을 올리면 이 채널 비율에 맞춰 저장하거나 앱으로 바로 보낼 수 있어요.'])].map(t => `<li>${t}</li>`).join('');
+  renderStrip();
 }
 function syncForm(){
   $('#f-name').value = S.name || ''; $('#f-price').value = S.price || ''; $('#f-gp').value = S.gp || '';
@@ -464,7 +862,7 @@ function useExamples(why){
 function applySheet(rows){
   const list = rowsToProducts(rows);
   if (!list.length){ sheetMsg('상품 시트에서 상품을 찾지 못했어요. 시트 첫 줄에 id, name 열이 있는지 확인해 주세요.', true, true); return; }
-  PRODUCTS = list; fillSelect();
+  PRODUCTS = list; fillSelect(); fillOtherSelects();
   const when = new Date();
   sheetMsg(`상품 ${list.length}개 불러옴 · ${when.getHours()}:${String(when.getMinutes()).padStart(2,'0')} 기준`, false, true);
   // 시트 값이 바뀐 상품이면 숫자(가격·참여 수량 등)를 최신으로 맞춤
@@ -533,11 +931,13 @@ async function copyText(btn, text, label){
 }
 $('#copyBody').onclick = e => copyText(e.currentTarget, $('#post').innerText.replace(/\n$/, ''), '본문 복사');
 $('#copyTitle').onclick = e => copyText(e.currentTarget, $('#title').innerText.trim(), '제목 복사');
-$('#copyLink').onclick = e => copyText(e.currentTarget, link(tab), '링크만 복사');
+$('#copyLink').onclick = e => copyText(e.currentTarget, currentLink(tab), '링크만 복사');
 
 S = ls.get('golmok_sns_draft', null) || fromPreset(PRESETS[0]);
 const savedTab = ls.get('golmok_sns_tab', 'band'); if (CH[savedTab]) { tab = savedTab; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === tab))); }
-syncForm(); render(true);
+I = {...I, ...ls.get('golmok_sns_info', {})}; U = {...U, ...ls.get('golmok_sns_up', {})}; SET = {...SET, ...ls.get('golmok_sns_set', {})};
+syncForm(); syncOther(); renderPhotos();
+setMode(['product','info','upcoming'].includes(ls.get('golmok_sns_mode', 'product')) ? ls.get('golmok_sns_mode', 'product') : 'product');
 
 /* ---------- 비밀번호 ----------
    비밀번호를 바꾸려면: 새 비밀번호 앞에 'golmok-sns:'를 붙인 문자열의 SHA-256 값을 PW_HASH에 넣으세요. */
