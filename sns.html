@@ -82,11 +82,29 @@ textarea{resize:vertical;min-height:64px;line-height:1.5}
 .example{font-size:11px;font-weight:700;color:var(--warn);border:1px solid currentColor;border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:1px}
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 body{margin:0}
+.gate{min-height:70vh;display:grid;place-items:center}
+.gate form{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px;display:grid;gap:12px;width:min(360px,100%)}
+.gate h1{font-size:22px}
+.gate .err{color:var(--warn);font-size:13px;min-height:1.2em;margin:0}
+.gate label.keep{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--sub)}
+.gate label.keep input{width:auto}
+.lock{justify-self:end;font-size:12px}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="gate" id="gate">
+  <form id="gateForm" autocomplete="on">
+    <h1>골목상회 홍보글 작업대</h1>
+    <p class="hint">사장님·직원용 페이지예요. 비밀번호를 입력해 주세요.</p>
+    <label for="gatePw">비밀번호<input id="gatePw" type="password" autocomplete="current-password" required></label>
+    <label class="keep" for="gateKeep"><input id="gateKeep" type="checkbox" checked>이 기기에서 30일 동안 기억하기</label>
+    <p class="err" id="gateErr" role="alert"></p>
+    <button class="btn primary" type="submit">열기</button>
+  </form>
+</div>
+<div class="wrap" id="app" hidden>
   <header>
+    <button class="chip lock" type="button" id="lockBtn">잠그기</button>
     <h1>골목상회 홍보글 작업대</h1>
     <p class="lead">왼쪽에 상품 정보를 넣으면 밴드·블로그·인스타·당근에 맞는 글이 오른쪽에 바로 만들어집니다. 글은 미리보기 칸에서 직접 고칠 수 있고, 각 글에는 채널별 추적 링크가 들어가 있어 어느 게시글에서 주문이 나왔는지 통계로 볼 수 있어요.</p>
   </header>
@@ -521,7 +539,38 @@ S = ls.get('golmok_sns_draft', null) || fromPreset(PRESETS[0]);
 const savedTab = ls.get('golmok_sns_tab', 'band'); if (CH[savedTab]) { tab = savedTab; document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.tab === tab))); }
 syncForm(); render(true);
 
-loadSheet(false);
+/* ---------- 비밀번호 ----------
+   비밀번호를 바꾸려면: 새 비밀번호 앞에 'golmok-sns:'를 붙인 문자열의 SHA-256 값을 PW_HASH에 넣으세요. */
+const PW_HASH = '6ee29e5624ec653a26cc0a837edb71749a3ed31330c4b6d90c920292fcb51f78';
+const UNLOCK_KEY = 'golmok_sns_unlock';
+async function sha256(t){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+let booted = false;
+function openApp(){
+  $('#gate').hidden = true; $('#app').hidden = false;
+  if (!booted){ booted = true; loadSheet(false); }
+}
+function isUnlocked(){
+  const u = ls.get(UNLOCK_KEY, null);
+  if (u && u.h === PW_HASH && u.until > Date.now()) return true;
+  try { return sessionStorage.getItem(UNLOCK_KEY) === PW_HASH; } catch(e) { return false; }
+}
+$('#gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const h = await sha256('golmok-sns:' + $('#gatePw').value.trim());
+  if (h !== PW_HASH){ $('#gateErr').textContent = '비밀번호가 맞지 않아요. 다시 입력해 주세요.'; $('#gatePw').select(); return; }
+  if ($('#gateKeep').checked) ls.set(UNLOCK_KEY, {h, until: Date.now() + 30 * 864e5});
+  try { sessionStorage.setItem(UNLOCK_KEY, h); } catch(err) {}
+  $('#gatePw').value = ''; $('#gateErr').textContent = '';
+  openApp();
+});
+$('#lockBtn').onclick = () => {
+  try { localStorage.removeItem(UNLOCK_KEY); sessionStorage.removeItem(UNLOCK_KEY); } catch(e) {}
+  $('#app').hidden = true; $('#gate').hidden = false; $('#gatePw').focus();
+};
+if (isUnlocked()) openApp(); else $('#gatePw').focus();
 </script>
 </body>
 </html>
