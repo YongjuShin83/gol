@@ -205,12 +205,19 @@ const CONFIG = {
   ADDRESS: '경남 창원시 의창구 북면 무동로226번길 6-25 중앙프라자 101호',
   HOURS: '',                                              // 영업시간 (예: '09:00~19:00, 일요일 휴무')
 
-  // 배송
+  // 배송 — 받는 방법: 매장 픽업 / 근거리 직접배송 / 택배
+  // 상품 시트 '배송(delivery)' 칸: 빈칸 = 셋 다 가능, '픽업' = 픽업만, '직접' = 픽업·직접배송만(택배 불가)
   ALLOW_DELIVERY: true,      // false = 모든 상품 매장 픽업만
-  DELIVERY_LABEL: '일반배송', // 배송 방식 이름 (매장에서 직접 배송)
-  DELIVERY_FEE: 2000,        // 배송비
-  FREE_SHIP_OVER: 30000,     // 이 금액 이상 주문 시 무료배송 (0 = 항상 배송비)
-  DELIVERY_NOTE: '',         // 배송 안내 (예: '창원 시내만 배송 가능해요')
+  LOCAL_ON: true,            // 근거리 직접배송 켜기
+  LOCAL_LABEL: '직접배송',
+  LOCAL_FEE: 2000,           // 직접배송비
+  LOCAL_FREE_OVER: 30000,    // 이 금액 이상이면 직접배송 무료 (0 = 항상 배송비)
+  LOCAL_NOTE: '매장 근처 지역만 가능해요. 거리가 멀면 따로 연락드려요.',
+  PARCEL_ON: true,           // 택배 켜기
+  PARCEL_LABEL: '택배',
+  PARCEL_FEE: 3000,          // 택배비
+  PARCEL_FREE_OVER: 50000,   // 이 금액 이상이면 택배 무료 (0 = 항상 택배비)
+  PARCEL_NOTE: '제주·도서산간은 추가 배송비가 있을 수 있어요.',
 
   // SheetDB API 주소. 비워두면 '데모 모드'로 샘플 상품이 보입니다.
   PRODUCTS_API: 'https://sheetdb.io/api/v1/oehravh1238d4',  // 상품 시트 (권한: Read만)
@@ -292,12 +299,19 @@ const DEMO = (() => {
 })();
 const DEMO_MODE = !CONFIG.PRODUCTS_API;
 const PICKUP = '매장 픽업';
-const SHIP = CONFIG.DELIVERY_LABEL || '일반배송';
+// 배송 방법: key는 상품의 배송 가능 여부(p.ship)와 맞춤
+const SHIPS = [
+  CONFIG.LOCAL_ON && {key: 'local', label: CONFIG.LOCAL_LABEL || '직접배송', fee: CONFIG.LOCAL_FEE || 0, free: CONFIG.LOCAL_FREE_OVER || 0,
+    note: '매장에서 직접 배송해 드려요.' + (CONFIG.LOCAL_NOTE ? '<br>' + CONFIG.LOCAL_NOTE : ''), done: '직접 배송해 드려요'},
+  CONFIG.PARCEL_ON && {key: 'parcel', label: CONFIG.PARCEL_LABEL || '택배', fee: CONFIG.PARCEL_FEE || 0, free: CONFIG.PARCEL_FREE_OVER || 0,
+    note: '택배로 보내드려요.' + (CONFIG.PARCEL_NOTE ? '<br>' + CONFIG.PARCEL_NOTE : ''), done: '택배로 보내드려요'},
+].filter(Boolean).filter(() => CONFIG.ALLOW_DELIVERY);
+const shipOf = label => SHIPS.find(m => m.label === label);
 const BANKPAY = '계좌이체', CARDPAY = '카드결제';
 const CARD_ON = !!(CONFIG.PAYAPP_USERID && CONFIG.PAYAPP_FEEDBACK_URL);
 const STORE = {name: CONFIG.STORE_NAME || CONFIG.BRAND, address: CONFIG.ADDRESS, hours: CONFIG.HOURS, phone: CONFIG.CONTACT};
 // 배송비: 상품 금액이 무료배송 기준 이상이면 0원
-const shipFee = items => (CONFIG.FREE_SHIP_OVER && items >= CONFIG.FREE_SHIP_OVER) ? 0 : (CONFIG.DELIVERY_FEE || 0);
+const shipFee = (m, items) => !m ? 0 : (m.free && items >= m.free) ? 0 : m.fee;
 
 /* ---------- 유틸 ---------- */
 const $ = s => document.querySelector(s);
@@ -425,8 +439,11 @@ function normalize(r){
     badge: /^(-|없음)?$/.test(String(r.badge ?? '').trim()) ? '' : String(r.badge).trim(),
     // type: 일반·상시·매장 = 매장 상품 / 그 외(빈칸 포함) = 공동구매
     regular: /일반|상시|매장/.test(type) && !/공구|공동/.test(type),
-    // delivery: 불가·X·N·픽업 = 배송 불가
-    ship: CONFIG.ALLOW_DELIVERY && !/^(불가|x|n|no|픽업|픽업만|매장픽업)$/i.test(String(r.delivery ?? '').trim()),
+    // delivery: 불가·X·N·픽업 = 픽업만 / 직접·근거리 = 택배 불가 / 그 외(빈칸 포함) = 모두 가능
+    ship: (() => { const d = String(r.delivery ?? '').trim();
+      if (/^(불가|x|n|no|픽업|픽업만|매장픽업)$/i.test(d)) return {local: false, parcel: false};
+      if (/직접|근거리|직배|택배\s*불가/.test(d)) return {local: true, parcel: false};
+      return {local: true, parcel: true}; })(),
   };
   p.left = p.max ? Math.max(0, p.max - p.joined) : Infinity;
   p.closed = p.status === '마감' || (dl && dl <= Date.now()) || p.left <= 0;
@@ -536,7 +553,8 @@ function openCart(){
   const items = cartItems();
   if (!items.length) { toast(removed ? '마감된 상품이 빠져서 장바구니가 비었어요' : '장바구니가 비어 있어요'); return; }
   STATS.beginCheckout(items);
-  const canShip = items.every(x => x.p.ship);
+  const ships = SHIPS.filter(m => items.every(x => x.p.ship[m.key]));
+  const blocked = SHIPS.filter(m => !ships.includes(m));
   const anyGroup = items.some(x => !x.p.regular);
   $('#dlgBody').innerHTML = `
   <form id="f" novalidate>
@@ -546,11 +564,11 @@ function openCart(){
     <div class="field"><label for="nm">이름</label><input id="nm" name="name" autocomplete="name" required></div>
     <div class="field"><label for="ph">휴대폰 번호</label><input id="ph" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="010-0000-0000" required></div>
     <div class="field"><label>받는 방법</label>
-      <div class="seg"><label><input type="radio" name="receive" value="${PICKUP}" checked><span>${PICKUP}</span></label>${canShip ? `<label><input type="radio" name="receive" value="${esc(SHIP)}"><span>${esc(SHIP)}</span></label>` : ''}</div>
-      ${CONFIG.ALLOW_DELIVERY && !canShip ? '<p class="pick">매장 픽업만 가능한 상품이 있어 픽업으로만 받을 수 있어요.</p>' : ''}</div>
+      <div class="seg"><label><input type="radio" name="receive" value="${PICKUP}" checked><span>${PICKUP}</span></label>${ships.map(m => `<label><input type="radio" name="receive" value="${esc(m.label)}"><span>${esc(m.label)}</span></label>`).join('')}</div>
+      ${blocked.length ? `<p class="pick">${ships.length ? `${blocked.map(m => esc(m.label)).join('·')}로 보낼 수 없는 상품이 있어요.` : '매장 픽업만 가능한 상품이 있어 픽업으로만 받을 수 있어요.'}</p>` : ''}</div>
     <div id="pickF">${pickCard()}</div>
-    <div class="field" id="addrF" style="display:none"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address">
-      <p class="pick">매장에서 직접 배송합니다. 배송비 ${won(CONFIG.DELIVERY_FEE||0)}${CONFIG.FREE_SHIP_OVER ? ` (${won(CONFIG.FREE_SHIP_OVER)} 이상 무료)` : ''}${CONFIG.DELIVERY_NOTE ? '<br>' + esc(CONFIG.DELIVERY_NOTE) : ''}</p></div>
+    <div class="field" id="addrF" style="display:none"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address" placeholder="도로명 주소와 동·호수까지">
+      <p class="pick" id="shipNote"></p></div>
     ${CARD_ON ? `<div class="field"><label>결제 방법</label>
       <div class="seg"><label><input type="radio" name="pay" value="${CARDPAY}" checked><span>${CARDPAY}</span></label><label><input type="radio" name="pay" value="${BANKPAY}"><span>${BANKPAY}</span></label></div>
       <p class="pick" id="payHint"></p></div>` : ''}
@@ -579,13 +597,14 @@ function openCart(){
         <b class="ci-sum">${won(unitOf(p) * qty)}</b>
         <button type="button" class="ci-x" data-cx="${esc(p.id)}" aria-label="삭제">×</button>
       </div>`).join('');
-    const items = cartSum(), ship = recvVal() === SHIP, fee = ship ? shipFee(items) : 0;
+    const items = cartSum(), m = shipOf(recvVal()), fee = shipFee(m, items);
     $('#tot').textContent = won(items + fee);
-    $('#feeRow').style.display = ship ? 'flex' : 'none';
+    $('#feeRow').style.display = m ? 'flex' : 'none';
     $('#itemsAmt').textContent = won(items);
     $('#feeAmt').textContent = fee ? won(fee) : '무료';
-    const need = CONFIG.FREE_SHIP_OVER - items;
-    $('#freeHint').style.display = ship && fee && CONFIG.FREE_SHIP_OVER && need > 0 ? 'block' : 'none';
+    if (m) $('#shipNote').innerHTML = `${m.note}<br>배송비 ${won(m.fee)}${m.free ? ` (${won(m.free)} 이상 무료)` : ''}`;
+    const need = m ? m.free - items : 0;
+    $('#freeHint').style.display = m && fee && m.free && need > 0 ? 'block' : 'none';
     $('#freeHint').textContent = need > 0 ? `${won(need)} 더 담으면 무료배송` : '';
     updateCartBar();
   };
@@ -602,16 +621,16 @@ function openCart(){
     if (x) return openCart();   // 상품이 빠지면 배송 가능 여부가 달라질 수 있어 다시 그림
     upd();
   };
-  const toggle = () => { $('#pickF').style.display = recvVal() === PICKUP ? '' : 'none'; $('#addrF').style.display = recvVal() === SHIP ? '' : 'none'; upd(); };
+  const toggle = () => { $('#pickF').style.display = recvVal() === PICKUP ? '' : 'none'; $('#addrF').style.display = shipOf(recvVal()) ? '' : 'none'; upd(); };
   f.querySelectorAll('[name=receive]').forEach(r => r.onchange = toggle);
   f.querySelectorAll('[name=pay]').forEach(r => r.onchange = upd);
   toggle();
   $('#cancel').onclick = () => $('#dlg').close();
-  f.onsubmit = e => { e.preventDefault(); submitCart(f, canShip); };
+  f.onsubmit = e => { e.preventDefault(); submitCart(f, ships); };
   if (!$('#dlg').open) $('#dlg').showModal();
 }
 
-async function submitCart(f, canShip){
+async function submitCart(f, ships){
   const err = $('#err'); err.textContent = '';
   if (f.website.value) return;  // 스팸봇 차단
   const items = cartItems();
@@ -621,20 +640,21 @@ async function submitCart(f, canShip){
   if (!items.length) return err.textContent = '장바구니가 비어 있어요.';
   if (!name) return err.textContent = '이름을 입력해 주세요.';
   if (!/^01\d-\d{3,4}-\d{4}$/.test(phone)) return err.textContent = '휴대폰 번호를 확인해 주세요.';
-  if (recv === SHIP && !canShip) return err.textContent = '매장 픽업만 가능한 상품이 있어요.';
-  if (recv === SHIP && addr.length < 6) return err.textContent = '배송 주소를 입력해 주세요.';
+  const m = shipOf(recv);
+  if (recv !== PICKUP && !ships.includes(m)) return err.textContent = '선택한 방법으로 보낼 수 없는 상품이 있어요.';
+  if (m && addr.length < 6) return err.textContent = '배송 주소를 입력해 주세요.';
   if (!f.agree.checked) return err.textContent = '개인정보 수집·이용에 동의해 주세요.';
   const over = items.find(x => x.qty > x.p.left);
   if (over) return err.textContent = `${over.p.name}: 남은 수량은 ${over.p.left}개입니다.`;
 
-  const sum = cartSum(), fee = recv === SHIP ? shipFee(sum) : 0;
+  const sum = cartSum(), fee = shipFee(m, sum);
   const no = orderNo(), at = nowKST();
   // 상품마다 한 줄씩, 같은 주문번호. 배송비·주문 합계는 첫 줄에만 기록
   const rows = items.map(({p, qty}, i) => ({
     order_no: no, created_at: at, product_id: p.id, product_name: p.name,
     unit_price: unitOf(p), qty, total: unitOf(p) * qty,
     ship_fee: i === 0 ? fee : '', order_total: i === 0 ? sum + fee : '',
-    name, phone, receive: recv, address: recv === SHIP ? addr : '',
+    name, phone, receive: recv, address: m ? addr : '',
     memo: i === 0 ? f.memo.value.trim() : '', pay_method: pay,
     status: pay === CARDPAY ? '결제대기' : '입금대기',
   }));
@@ -672,7 +692,7 @@ function orderBody(v){
     : `<div class="bank">아래 계좌로 입금해 주세요.<b>${esc(CONFIG.BANK)}</b><span style="color:var(--sub);font-size:13px">입금자명을 주문자 이름(${esc(v.name)})과 같게 해주시면 빠르게 확인됩니다.</span></div>
        ${v.pickup ? '<p class="subt">현장결제는 픽업 시 결제해 주시면 됩니다.</p>' : ''}`;
   return `<p class="subt" style="margin:0 0 10px">${esc(v.items)}</p>
-    ${v.pickup ? pickCard() : `<p class="subt">${esc(v.when)} 직접 배송해 드려요${v.ship_fee ? ` (배송비 ${won(v.ship_fee)} 포함)` : ' (무료배송)'}.</p>`}
+    ${v.pickup ? pickCard() : `<p class="subt">${esc(v.when)} ${shipOf(v.recv)?.done || '배송해 드려요'}${v.ship_fee ? ` (배송비 ${won(v.ship_fee)} 포함)` : ' (무료배송)'}.</p>`}
     ${payBox}
     ${v.pickup ? `<p class="subt">${esc(v.when)} 상품이 준비되면 문자로 알려드려요.</p>` : ''}`;
 }
@@ -681,7 +701,7 @@ function showDone(o, items){
   const when = items.every(x => x.p.regular) ? paid : items.some(x => x.p.regular) ? `일반 상품은 ${paid}, 공동구매 상품은 마감 후` : '마감 후';
   const v = {
     order_no: o.order_no, at: nowKST().slice(0, 16), name: o.name, total: o.total, ship_fee: o.ship_fee, when,
-    items: items.map(x => `${x.p.name} ${x.qty}개`).join(' · '), pickup: o.receive === PICKUP,
+    items: items.map(x => `${x.p.name} ${x.qty}개`).join(' · '), pickup: o.receive === PICKUP, recv: o.receive,
     pay: o.pay || BANKPAY, phone: o.phone, goodname: o.goodname,
   };
   saveOrder(v);
@@ -755,7 +775,8 @@ $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg')
   if (CARD_ON) $('#stepPay').innerHTML = '<b>결제</b> — 카드결제 또는 계좌 입금하면 참여 완료 (목표 미달 시 전액 환불)';
   const paidNo = new URLSearchParams(location.search).get('paid');
   if (paidNo) showCardReturn(paidNo);
-  if (!CONFIG.ALLOW_DELIVERY) $('#stepRecv').innerHTML = '<b>매장 픽업</b> — 준비되면 문자로 알려드려요';
+  if (!SHIPS.length) $('#stepRecv').innerHTML = '<b>매장 픽업</b> — 준비되면 문자로 알려드려요';
+  else $('#stepRecv').innerHTML = `<b>마감 후 수령</b> — 매장 픽업, ${SHIPS.map(m => esc(m.label)).join(', ')} 중 선택`;
   $('#footer').innerHTML = `${esc(CONFIG.BRAND)} · 문의 ${esc(CONFIG.CONTACT)}${CONFIG.ADDRESS ? ' · ' + esc(CONFIG.ADDRESS) : ''}<br>공동구매는 목표 수량 미달 시 취소될 수 있으며, 이 경우 결제하신 금액은 전액 환불됩니다.`;
   if (DEMO_MODE) $('#notice').textContent = '데모 모드입니다. CONFIG에 SheetDB 주소를 넣으면 실제 시트와 연결됩니다.';
   updateMyOrders();
