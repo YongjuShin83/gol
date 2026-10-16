@@ -570,7 +570,7 @@ function openCart(){
     <div class="field" id="addrF" style="display:none"><label for="ad">배송 주소</label><input id="ad" name="address" autocomplete="street-address" placeholder="도로명 주소와 동·호수까지">
       <p class="pick" id="shipNote"></p></div>
     ${CARD_ON ? `<div class="field"><label>결제 방법</label>
-      <div class="seg"><label><input type="radio" name="pay" value="${CARDPAY}"><span>${CARDPAY}</span></label><label><input type="radio" name="pay" value="${BANKPAY}" checked><span>${BANKPAY}</span></label></div>
+      <div class="seg"><label><input type="radio" name="pay" value="${BANKPAY}" checked><span>${BANKPAY}</span></label><label><input type="radio" name="pay" value="${CARDPAY}"><span>${CARDPAY}</span></label></div>
       <p class="pick" id="payHint"></p></div>` : ''}
     <div class="field"><label for="mm">요청사항 (선택)</label><textarea id="mm" name="memo" rows="2"></textarea></div>
     <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
