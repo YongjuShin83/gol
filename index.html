@@ -411,21 +411,19 @@ async function postOrder(rows){
 /* ---------- 카드결제 (페이앱) ---------- */
 // 페이앱 결제창으로 이동. 결제 결과는 페이앱 → Apps Script(feedbackurl)로 전달되어 주문 시트에 기록됨.
 // 돌아오는 화면(returnurl)은 안내용일 뿐, 결제 확인은 시트의 '결제완료'로 판단합니다.
-function payCard(o){
+async function payCard(o){
   const back = location.origin + location.pathname + '?paid=' + encodeURIComponent(o.order_no);
-  const fields = {
-    userid: CONFIG.PAYAPP_USERID, shopname: CONFIG.BRAND,
-    goodname: o.goodname, price: o.total, recvphone: String(o.phone).replace(/\D/g, ''),
-    memo: '주문번호 ' + o.order_no, var1: o.order_no,
-    feedbackurl: CONFIG.PAYAPP_FEEDBACK_URL, checkretry: 'y',
-    returnurl: back, smsuse: 'n',
-    redirectpay: '1',   // '결제요청 메세지 발송' 화면 없이 카드 입력 결제창으로 바로 이동
-  };
-  const form = document.createElement('form');
-  form.method = 'post'; form.action = 'https://lite.payapp.kr/pay'; form.acceptCharset = 'utf-8'; form.style.display = 'none';
-  for (const [k, v] of Object.entries(fields)) { const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; form.appendChild(i); }
-  document.body.appendChild(form);
-  form.submit();
+  const base = CONFIG.PAYAPP_FEEDBACK_URL.replace(/\/+$/, '');
+  const res = await fetch(base + '/pay', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      goodname: o.goodname, price: o.total, recvphone: String(o.phone).replace(/\D/g, ''),
+      memo: '주문번호 ' + o.order_no, var1: o.order_no, returnurl: back,
+    }),
+  });
+  let j = {}; try { j = await res.json(); } catch(_) {}
+  if (!j.ok || !j.payurl) throw new Error('카드결제 화면을 열지 못했어요' + (j.error ? ' (' + j.error + ')' : '') + '. 전화로 주문해 주세요: ' + CONFIG.CONTACT);
+  location.href = j.payurl;   // 페이앱 카드 입력 결제창으로 바로 이동
 }
 
 /* ---------- 상품 ---------- */
@@ -673,7 +671,7 @@ async function submitCart(f, ships){
     CART = []; saveCart(); updateCartBar(); render();
     const goodname = items[0].p.name + (items.length > 1 ? ` 외 ${items.length - 1}건` : '');
     const v = showDone({order_no: no, name, phone, receive: recv, total: sum + fee, ship_fee: fee, pay, goodname}, items);
-    if (pay === CARDPAY && !DEMO_MODE) { btn.textContent = '결제 화면으로 이동 중…'; payCard(v); }
+    if (pay === CARDPAY && !DEMO_MODE) { btn.textContent = '결제 화면으로 이동 중…'; payCard(v).catch(e => { toast(e.message); btn.disabled = false; btn.textContent = '주문하고 카드 결제'; }); }
   } catch (e) {
     err.textContent = e.message; btn.disabled = false; btn.textContent = pay === CARDPAY ? '주문하고 카드 결제' : '주문하기';
   }
@@ -762,7 +760,7 @@ document.addEventListener('click', e => {
   const pc = e.target.closest('[data-paycard]');
   if (pc) {
     const v = getOrders().find(x => x.order_no === pc.dataset.paycard);
-    if (v && v.phone && v.total) { pc.disabled = true; pc.textContent = '결제 화면으로 이동 중…'; payCard(v); }
+    if (v && v.phone && v.total) { pc.disabled = true; pc.textContent = '결제 화면으로 이동 중…'; payCard(v).catch(e => { toast(e.message); pc.disabled = false; pc.textContent = '카드로 결제하기'; }); }
     else toast('주문 정보를 찾지 못했어요. 전화로 문의해 주세요: ' + CONFIG.CONTACT);
   }
 });
