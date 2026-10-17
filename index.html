@@ -419,6 +419,7 @@ function payCard(o){
     memo: '주문번호 ' + o.order_no, var1: o.order_no,
     feedbackurl: CONFIG.PAYAPP_FEEDBACK_URL, checkretry: 'y',
     returnurl: back, smsuse: 'n',
+    redirectpay: '1',   // '결제요청 메세지 발송' 화면 없이 카드 입력 결제창으로 바로 이동
   };
   const form = document.createElement('form');
   form.method = 'post'; form.action = 'https://lite.payapp.kr/pay'; form.acceptCharset = 'utf-8'; form.style.display = 'none';
